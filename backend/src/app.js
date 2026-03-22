@@ -14,3 +14,15 @@ app.get("/", (req, res) => {
 app.listen(3001, () => {
   console.log("Servidor en http://localhost:3001");
 });
+
+// RUTAS
+const authRoutes = require("./routers/auth.routes");
+app.use("/api/auth", authRoutes);
+
+//Servidor 
+
+app.listen(3001, () => {
+  console.log("Servidor en http://localhost:3001");
+});
+
+module.exports = app;
