@@ -11,18 +11,19 @@ app.get("/", (req, res) => {
   res.send("API Licoreria-KN");
 });
 
-app.listen(3001, () => {
-  console.log("Servidor en http://localhost:3001");
-});
+app.use(express.urlencoded({ extended: true }));
 
 // RUTAS
 const authRoutes = require("./routers/auth.routes");
+const clientesRoutes = require("./routers/clientes.routes");
+const productosRoutes = require("./routers/productos.routes");
+const proveedoresRoutes = require("./routers/proveedores.routes");
+const ventasRoutes = require("./routers/ventas.routes");
+
 app.use("/api/auth", authRoutes);
-
-//Servidor 
-
-app.listen(3001, () => {
-  console.log("Servidor en http://localhost:3001");
-});
+app.use("/api/clientes", clientesRoutes);
+app.use("/api/productos", productosRoutes);
+app.use("/api/proveedores", proveedoresRoutes);
+app.use("/api/ventas", ventasRoutes);
 
 module.exports = app;

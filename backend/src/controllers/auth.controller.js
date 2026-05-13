@@ -7,6 +7,13 @@ const register = async (req, res) => {
   const { nombre, username, password, rol } = req.body;
 
   try {
+    const existente = await pool.query(
+      "SELECT usuario_id FROM usuarios WHERE username = $1", [username]
+    );
+    if (existente.rows.length > 0) {
+      return res.status(400).json({ error: "El nombre de usuario ya existe" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await pool.query(
@@ -17,6 +24,9 @@ const register = async (req, res) => {
 
     res.json({ message: "Usuario creado" });
   } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: "El nombre de usuario ya existe" });
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -71,4 +81,49 @@ const getUsers = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getUsers };
+//UPDATE USER
+const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { nombre, username, password, rol } = req.body;
+
+  try {
+    const existente = await pool.query(
+      "SELECT usuario_id FROM usuarios WHERE username = $1 AND usuario_id != $2", [username, id]
+    );
+    if (existente.rows.length > 0) {
+      return res.status(400).json({ error: "El nombre de usuario ya existe" });
+    }
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await pool.query(
+        "UPDATE usuarios SET nombre = $1, username = $2, password_hash = $3, rol = $4 WHERE usuario_id = $5",
+        [nombre, username, hashedPassword, rol, id]
+      );
+    } else {
+      await pool.query(
+        "UPDATE usuarios SET nombre = $1, username = $2, rol = $3 WHERE usuario_id = $4",
+        [nombre, username, rol, id]
+      );
+    }
+    res.json({ message: "Usuario actualizado" });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: "El nombre de usuario ya existe" });
+    }
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//DELETE USER
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM usuarios WHERE usuario_id = $1", [id]);
+    res.json({ message: "Usuario eliminado" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { register, login, getUsers, updateUser, deleteUser };
