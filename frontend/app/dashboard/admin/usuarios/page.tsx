@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
@@ -7,7 +8,7 @@ const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
 const SIN_ESPECIALES = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9._-]*$/;
 
 export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState([]);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -36,7 +37,7 @@ export default function UsuariosPage() {
     }
   };
 
-  const validarCampo = (name, value) => {
+  const validarCampo = (name: any, value: any) => {
     let error = '';
     if (name === 'nombre' && !SOLO_LETRAS.test(value)) {
       error = 'El nombre solo puede contener letras';
@@ -44,11 +45,11 @@ export default function UsuariosPage() {
     if (name === 'username' && !SIN_ESPECIALES.test(value)) {
       error = 'El usuario no puede contener caracteres especiales';
     }
-    setErrors(prev => ({ ...prev, [name]: error }));
+    setErrors((prev: any) => ({ ...prev, [name]: error }));
     return error;
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setBackendError('');
@@ -57,7 +58,7 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     const errNombre = validarCampo('nombre', form.nombre);
     const errUsername = validarCampo('username', form.username);
@@ -68,7 +69,7 @@ export default function UsuariosPage() {
     try {
       let res;
       if (editando) {
-        const bodyData = { nombre: form.nombre, username: form.username, rol: form.rol };
+        const bodyData: any = { nombre: form.nombre, username: form.username, rol: form.rol };
         if (form.password) bodyData.password = form.password;
         res = await fetch(`http://localhost:3001/api/auth/users/${editando}`, {
           method: 'PUT',
@@ -99,12 +100,12 @@ export default function UsuariosPage() {
       setErrors({ nombre: '', username: '' });
       setBackendError('');
       fetchUsuarios();
-    } catch (e) {
+    } catch (e: any) {
       setBackendError('Error de conexión con el servidor');
     }
   };
 
-  const handleEdit = (u) => {
+  const handleEdit = (u: any) => {
     setEditando(u.usuario_id);
     setForm({ nombre: u.nombre, username: u.username, password: '', rol: u.rol });
     setErrors({ nombre: '', username: '' });
@@ -120,7 +121,7 @@ export default function UsuariosPage() {
     setBackendError('');
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: any) => {
     setItemToDelete(id);
     setShowConfirm(true);
   };
@@ -163,7 +164,7 @@ export default function UsuariosPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
@@ -171,9 +172,9 @@ export default function UsuariosPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {usuarios.map((u) => (
+            {usuarios.map((u, idx) => (
               <tr key={u.usuario_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-800">{u.usuario_id}</td>
+                <td className="px-6 py-4 text-gray-800">{idx + 1}</td>
                 <td className="px-6 py-4 text-gray-800">{u.nombre}</td>
                 <td className="px-6 py-4 text-gray-800">{u.username}</td>
                 <td className="px-6 py-4">

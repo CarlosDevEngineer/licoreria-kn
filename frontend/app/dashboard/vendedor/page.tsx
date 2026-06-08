@@ -1,17 +1,16 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-
-const COLORS = ['#374151', '#6b7280', '#9ca3af', '#d1d5db', '#e5e7eb', '#f3f4f6'];
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 export default function VendedorDashboard() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [stats, setStats] = useState({ productos: 0, ventas: 0 });
-  const [ventasData, setVentasData] = useState([]);
-  const [productosData, setProductosData] = useState([]);
+  const [ventasData, setVentasData] = useState<any[]>([]);
+  const [productosData, setProductosData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,9 +26,11 @@ export default function VendedorDashboard() {
 
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem('token');
+      const authHeaders = { 'Authorization': `Bearer ${token}` };
       const [productos, ventas] = await Promise.all([
-        fetch('http://localhost:3001/api/productos').then(r => r.json()),
-        fetch('http://localhost:3001/api/ventas', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }}).then(r => r.json()),
+        fetch('http://localhost:3001/api/productos', { headers: authHeaders }).then(r => r.json()),
+        fetch('http://localhost:3001/api/ventas', { headers: authHeaders }).then(r => r.json()),
       ]);
       
       const ventasCompletadas = Array.isArray(ventas) ? ventas.filter((v: any) => v.estado === 'completada') : [];
@@ -43,7 +44,8 @@ export default function VendedorDashboard() {
       if (Array.isArray(productos) && productos.length > 0) {
         const topProductos = productos.slice(0, 6).map((p: any) => ({
           name: p.nombre?.substring(0, 12) || 'Sin nombre',
-          stock: p.stock_actual || 0,
+          stock: Math.floor((Number(p.stock_actual) || 0) / (Number(p.unidades_por_caja) || 1)),
+          unidades_por_caja: p.unidades_por_caja,
         }));
         setProductosData(topProductos);
       } else {
@@ -52,21 +54,21 @@ export default function VendedorDashboard() {
 
       if (Array.isArray(ventas) && ventas.length > 0) {
         const misVentas = ventas.filter((v: any) => v.estado === 'completada');
-        const ventasPorMes: any = {};
+        const ventasPorDia: any = {};
         misVentas.forEach((v: any) => {
           const fecha = new Date(v.fecha_venta || v.fecha);
           if (isNaN(fecha.getTime())) return;
-          const mes = fecha.toLocaleString('es-ES', { month: 'short' });
-          const key = mes.charAt(0).toUpperCase() + mes.slice(1);
-          if (!ventasPorMes[key]) ventasPorMes[key] = { name: key, monthIdx: fecha.getMonth(), ventas: 0 };
-          ventasPorMes[key].ventas += Number(v.total) || 0;
+          const key = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+          const timestamp = fecha.setHours(0, 0, 0, 0);
+          if (!ventasPorDia[key]) ventasPorDia[key] = { name: key, dayTs: timestamp, ventas: 0 };
+          ventasPorDia[key].ventas += Number(v.total) || 0;
         });
-        const mesesData = Object.values(ventasPorMes).sort((a: any, b: any) => a.monthIdx - b.monthIdx);
-        setVentasData(mesesData.length > 0 ? mesesData : [{ name: 'Sin datos', ventas: 0 }]);
+        const diasData = Object.values(ventasPorDia).sort((a: any, b: any) => a.dayTs - b.dayTs);
+        setVentasData(diasData.length > 0 ? diasData : [{ name: 'Sin datos', ventas: 0 }]);
       } else {
         setVentasData([{ name: 'Sin datos', ventas: 0 }]);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setVentasData([{ name: 'Error', ventas: 0 }]);
       setProductosData([]);
@@ -116,7 +118,7 @@ export default function VendedorDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Mis Ventas por Mes</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Mis Ventas por Día</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={ventasData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -135,14 +137,14 @@ export default function VendedorDashboard() {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="px-3 py-2 text-left">Producto</th>
-                  <th className="px-3 py-2 text-right">Stock</th>
+                  <th className="px-3 py-2 text-right">Stock (Caja)</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {productosData.map((p, i) => (
                   <tr key={i}>
                     <td className="px-3 py-2">{p.name}</td>
-                    <td className={`px-3 py-2 text-right ${p.stock < 5 ? 'text-red-600 font-bold' : p.stock < 10 ? 'text-yellow-600' : 'text-green-600'}`}>{p.stock}</td>
+                    <td className={`px-3 py-2 text-right ${p.stock <= 1 ? 'text-red-600 font-bold' : 'text-green-600'}`}>{p.stock}</td>
                   </tr>
                 ))}
               </tbody>

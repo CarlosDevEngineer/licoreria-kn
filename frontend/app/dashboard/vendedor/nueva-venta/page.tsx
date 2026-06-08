@@ -1,23 +1,54 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useState } from 'react';
 import SuccessModal from '@/app/components/SuccessModal';
 
 export default function NuevaVentaPage() {
-  const [clientes, setClientes] = useState([]);
-  const [productos, setProductos] = useState([]);
+  const [clientes, setClientes] = useState<any[]>([]);
+  const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [carrito, setCarrito] = useState([]);
+  const [carrito, setCarrito] = useState<any[]>([]);
   const [clienteId, setClienteId] = useState('');
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [observaciones, setObservaciones] = useState('');
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ nit_ci: '', nombre: '', telefono: '' });
+  const [clienteErrors, setClienteErrors] = useState({ nit_ci: '', nombre: '', telefono: '' });
+  const [clienteBackendError, setClienteBackendError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [guardando, setGuardando] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState('todos');
+
+  const formatStockFromUnd = (totalUnd: number, udsPorCaja: number) => {
+    const uds = udsPorCaja || 1;
+    const cajas = Math.floor(totalUnd / uds);
+    const undSueltas = totalUnd % uds;
+    if (undSueltas > 0) return `${cajas} caja${cajas !== 1 ? 's' : ''} | ${undSueltas} und suelta${undSueltas !== 1 ? 's' : ''}`;
+    return `${cajas} caja${cajas !== 1 ? 's' : ''}`;
+  };
+
+  const getCajasYNovedades = (stockActual: number, udsPorCaja: number) => {
+    const totalUnd = Math.round(stockActual);
+    const uds = udsPorCaja || 1;
+    const cajas = Math.floor(totalUnd / uds);
+    const und = totalUnd % uds;
+    return { cajas, und, totalUnd };
+  };
+
+  const getUndEnCarrito = (productoId: number) => {
+    let total = 0;
+    carrito.forEach((item: any) => {
+      if (item.producto_id === productoId) {
+        const uds = item.unidades_por_caja || 1;
+        total += item.tipo_venta === 'caja' ? item.cantidad * uds : item.cantidad;
+      }
+    });
+    return total;
+  };
 
   useEffect(() => {
     fetchData();
@@ -25,52 +56,152 @@ export default function NuevaVentaPage() {
 
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem('token');
+      const authHeaders = { 'Authorization': `Bearer ${token}` };
       const [clientesRes, productosRes] = await Promise.all([
-        fetch('http://localhost:3001/api/clientes'),
-        fetch('http://localhost:3001/api/productos'),
+        fetch('http://localhost:3001/api/clientes', { headers: authHeaders }),
+        fetch('http://localhost:3001/api/productos', { headers: authHeaders }),
       ]);
       const clientesData = await clientesRes.json();
       const productosData = await productosRes.json();
-      setClientes(clientesData);
-      setProductos(productosData.filter(p => p.activo && p.stock_actual > 0));
-    } catch (e) {
+      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setProductos(Array.isArray(productosData) ? productosData.filter((p: any) => p.activo && Number(p.stock_actual) > 0) : []);
+    } catch (e: any) {
       console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const agregarProducto = (producto) => {
-    const existente = carrito.find(p => p.producto_id === producto.producto_id);
-    if (existente) {
-      if (existente.cantidad < producto.stock_actual) {
-        setCarrito(carrito.map(p => p.producto_id === producto.producto_id ? { ...p, cantidad: p.cantidad + 1, subtotal: (p.cantidad + 1) * p.precio_unitario } : p));
+  const agregarProducto = (producto: any) => {
+    const udsPorCaja = Number(producto.unidades_por_caja) || 1;
+    setCarrito((prev: any[]) => {
+      const existente = prev.find((p: any) => p.producto_id === producto.producto_id);
+      console.log('agregarProducto:', { producto_id: producto.producto_id, nombre: producto.nombre, existente: !!existente, carritoLen: prev.length });
+      if (existente) {
+        const stockOriginal = Number(producto.stock_actual);
+        const undEnCarrito = getUndEnCarrito(producto.producto_id);
+        const incUnd = existente.tipo_venta === 'caja' ? udsPorCaja : 1;
+        if (undEnCarrito + incUnd <= stockOriginal) {
+          const nuevaCant = existente.cantidad + 1;
+          console.log('incrementando cantidad:', { de: existente.cantidad, a: nuevaCant });
+          return prev.map((p: any) => p.producto_id === producto.producto_id ? {
+            ...p, cantidad: nuevaCant, subtotal: Number((nuevaCant * p.precio_unitario).toFixed(2))
+          } : p);
+        }
+      } else {
+        const pUnitario = Number(producto.precio_venta) * udsPorCaja;
+        console.log('agregando nuevo producto al carrito:', { producto_id: producto.producto_id, udsPorCaja, pUnitario });
+        return [...prev, {
+          producto_id: producto.producto_id, nombre: producto.nombre, cantidad: 1,
+          precio_unitario: pUnitario, subtotal: pUnitario,
+          stock_actual: Number(producto.stock_actual), tipo_producto: producto.tipo_producto,
+          marca: producto.marca, presentacion_ml: producto.presentacion_ml,
+          tipo_envase: producto.tipo_envase, unidades_por_caja: udsPorCaja,
+          tipo_venta: 'caja'
+        }];
       }
-    } else {
-      setCarrito([...carrito, { producto_id: producto.producto_id, nombre: producto.nombre, cantidad: 1, precio_unitario: producto.precio_venta, subtotal: producto.precio_venta, stock_actual: producto.stock_actual, tipo_producto: producto.tipo_producto, marca: producto.marca, presentacion_ml: producto.presentacion_ml, tipo_envase: producto.tipo_envase, unidad_medida: producto.unidad_medida }]);
-    }
+      return prev;
+    });
   };
 
-  const actualizarCantidad = (producto_id, cantidad) => {
+  const toggleTipoVenta = (producto_id: any) => {
+    console.log('toggleTipoVenta:', { producto_id });
+    setCarrito(carrito.map((p: any) => {
+      if (p.producto_id !== producto_id) return p;
+      const nuevoTipo = p.tipo_venta === 'caja' ? 'unidad' : 'caja';
+      const uds = p.unidades_por_caja || 1;
+      const stockOriginal = Math.round(p.stock_actual);
+      const undEnCarrito = getUndEnCarrito(producto_id);
+      const undActualesItem = p.tipo_venta === 'caja' ? p.cantidad * uds : p.cantidad;
+      const restante = stockOriginal - (undEnCarrito - undActualesItem);
+      const nuevoPrecio = nuevoTipo === 'caja'
+        ? Number(productos.find((pr: any) => pr.producto_id === producto_id)?.precio_venta) * uds
+        : Number(productos.find((pr: any) => pr.producto_id === producto_id)?.precio_venta);
+      const maxUnd = nuevoTipo === 'caja' ? Math.floor(restante / uds) : restante;
+      const nuevaCant = Math.min(p.cantidad, maxUnd || 1);
+      console.log('toggle result:', { de: p.tipo_venta, a: nuevoTipo, cantidad: p.cantidad, nuevaCant, nuevoPrecio, maxUnd });
+      return {
+        ...p,
+        tipo_venta: nuevoTipo,
+        cantidad: nuevaCant,
+        precio_unitario: nuevoPrecio,
+        subtotal: Number((nuevaCant * nuevoPrecio).toFixed(2))
+      };
+    }));
+  };
+
+  const actualizarCantidad = (producto_id: any, cantidad: any) => {
+    console.log('actualizarCantidad:', { producto_id, cantidad });
     if (cantidad <= 0) {
-      setCarrito(carrito.filter(p => p.producto_id !== producto_id));
+      setCarrito(carrito.filter((p: any) => p.producto_id !== producto_id));
     } else {
-      const producto = carrito.find(p => p.producto_id === producto_id);
-      if (cantidad <= producto.stock_actual) {
-        setCarrito(carrito.map(p => p.producto_id === producto_id ? { ...p, cantidad, subtotal: cantidad * p.precio_unitario } : p));
+      const item = carrito.find((p: any) => p.producto_id === producto_id);
+      if (!item) return;
+      const uds = item.unidades_por_caja || 1;
+      const stockOriginal = Math.round(item.stock_actual);
+      const undEnCarrito = getUndEnCarrito(producto_id);
+      const undActualesItem = item.tipo_venta === 'caja' ? item.cantidad * uds : item.cantidad;
+      const restante = stockOriginal - (undEnCarrito - undActualesItem);
+      const maxQty = item.tipo_venta === 'caja' ? Math.floor(restante / uds) : restante;
+      if (cantidad <= maxQty) {
+        setCarrito(carrito.map((p: any) => p.producto_id === producto_id ? {
+          ...p, cantidad, subtotal: Number((cantidad * p.precio_unitario).toFixed(2))
+        } : p));
       }
     }
   };
 
-  const eliminarProducto = (producto_id) => {
-    setCarrito(carrito.filter(p => p.producto_id !== producto_id));
+  const eliminarProducto = (producto_id: any) => {
+    setCarrito(carrito.filter((p: any) => p.producto_id !== producto_id));
   };
 
-  const total = carrito.reduce((sum, p) => sum + p.subtotal, 0);
+  const total = carrito.reduce((sum: any, p: any) => sum + Number(p.subtotal), 0);
 
-  const crearCliente = async (e) => {
+  const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+  const SOLO_DIGITOS = /^\d*$/;
+
+  const validarClienteCampo = (name: string, value: string) => {
+    let error = '';
+    if (name === 'nombre' && !SOLO_LETRAS.test(value)) {
+      error = 'El nombre solo puede contener letras';
+    }
+    if (name === 'nit_ci') {
+      if (!SOLO_DIGITOS.test(value)) {
+        error = 'El NIT/CI solo puede contener números';
+      } else if (value.length < 7 || value.length > 12) {
+        error = 'El NIT/CI debe tener entre 7 y 12 dígitos';
+      }
+    }
+    if (name === 'telefono' && value) {
+      if (!SOLO_DIGITOS.test(value)) {
+        error = 'El teléfono solo puede contener números';
+      } else if (value.length > 8) {
+        error = 'El teléfono debe tener máximo 8 dígitos';
+      }
+    }
+    setClienteErrors((prev: any) => ({ ...prev, [name]: error }));
+    return error;
+  };
+
+  const handleClienteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNuevoCliente((prev: any) => ({ ...prev, [name]: value }));
+    setClienteBackendError('');
+    if (['nombre', 'nit_ci', 'telefono'].includes(name)) {
+      validarClienteCampo(name, value);
+    }
+  };
+
+  const crearCliente = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errNombre = validarClienteCampo('nombre', nuevoCliente.nombre);
+    const errNit = validarClienteCampo('nit_ci', nuevoCliente.nit_ci);
+    const errTel = validarClienteCampo('telefono', nuevoCliente.telefono);
+    if (errNombre || errNit || errTel) return;
+
     const token = localStorage.getItem('token');
+    setClienteBackendError('');
     try {
       const res = await fetch('http://localhost:3001/api/clientes', {
         method: 'POST',
@@ -81,41 +212,59 @@ export default function NuevaVentaPage() {
         body: JSON.stringify(nuevoCliente),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setClienteBackendError(data.error || 'Error al guardar');
+        return;
+      }
       setClientes([...clientes, data]);
       setClienteId(data.cliente_id);
       setShowClienteModal(false);
       setNuevoCliente({ nit_ci: '', nombre: '', telefono: '' });
-    } catch (e) {
-      console.error(e);
+      setClienteErrors({ nit_ci: '', nombre: '', telefono: '' });
+      setClienteBackendError('');
+    } catch (e: any) {
+      setClienteBackendError('Error de conexión con el servidor');
     }
   };
 
   const registrarVenta = async () => {
+    if (guardando) return;
     if (!clienteId || carrito.length === 0) {
       setErrorMessage('Selecciona un cliente y agrega productos');
       setShowError(true);
       return;
     }
+    setGuardando(true);
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:3001/api/ventas', {
+      const payload = { cliente_id: clienteId, descuento: 0, total, metodo_pago: metodoPago, observaciones, productos: carrito.map((p: any) => ({ producto_id: p.producto_id, cantidad: p.cantidad, tipo_venta: p.tipo_venta || 'unidad', precio_unitario: p.precio_unitario, subtotal: p.subtotal })) };
+      const res = await fetch('http://localhost:3001/api/ventas', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ cliente_id: clienteId, descuento: 0, total, metodo_pago: metodoPago, observaciones, productos: carrito }),
+        body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const err = await res.json();
+        setErrorMessage(err.error || 'Error al registrar la venta');
+        setShowError(true);
+        setGuardando(false);
+        return;
+      }
       setSuccessMessage('¡Venta registrada exitosamente!');
       setShowSuccess(true);
       setCarrito([]);
       setClienteId('');
       setObservaciones('');
+      setGuardando(false);
       fetchData();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setErrorMessage('Error al registrar la venta. Intenta nuevamente.');
       setShowError(true);
+      setGuardando(false);
     }
   };
 
@@ -147,22 +296,29 @@ export default function NuevaVentaPage() {
               <button onClick={() => setFiltroTipo('otro')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filtroTipo === 'otro' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Otros</button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {productos.filter(p => filtroTipo === 'todos' || p.tipo_producto === filtroTipo).map(p => (
-                <div key={p.producto_id} onClick={() => agregarProducto(p)} className="border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors">
-                  <div className="flex items-center gap-1 mb-1">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.tipo_producto === 'bebida' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
-                      {p.tipo_producto}
-                    </span>
+              {productos.filter(p => filtroTipo === 'todos' || p.tipo_producto === filtroTipo).map((p: any) => {
+                const stockOriginal = Math.round(Number(p.stock_actual));
+                const info = getCajasYNovedades(stockOriginal, Number(p.unidades_por_caja) || 1);
+                return (
+                  <div key={p.producto_id} onClick={() => agregarProducto(p)} className="border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors">
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.tipo_producto === 'bebida' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                        {p.tipo_producto}
+                      </span>
+                    </div>
+                    <p className="font-medium text-sm text-gray-800">{p.nombre}</p>
+                    <p className="text-xs text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
+                    <p className="text-xs text-gray-500">{p.tipo_envase ? `Envase: ${p.tipo_envase}` : ''}</p>
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-green-600 font-bold text-sm">Bs {p.precio_venta}</p>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Stock: {formatStockFromUnd(stockOriginal, Number(p.unidades_por_caja) || 1)}</p>
+                        <p className="text-[10px] text-gray-400">{p.unidades_por_caja} und/caja &rarr; {info.totalUnd} und</p>
+                      </div>
+                    </div>
                   </div>
-                  <p className="font-medium text-sm text-gray-800">{p.nombre}</p>
-                  <p className="text-xs text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
-                  <p className="text-xs text-gray-500">{p.tipo_envase ? `Envase: ${p.tipo_envase}` : ''}</p>
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-green-600 font-bold text-sm">Bs {p.precio_venta}</p>
-                    <p className="text-xs text-gray-500">Stock: {Math.round(p.stock_actual)} <span className="bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded text-[10px] font-medium">{p.unidad_medida}</span></p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -174,23 +330,47 @@ export default function NuevaVentaPage() {
               <p className="text-gray-400 text-center py-4">Sin productos</p>
             ) : (
               <div className="space-y-3">
-                {carrito.map(p => (
-                  <div key={p.producto_id} className="flex justify-between items-center border-b border-gray-200 pb-2">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm text-gray-800">{p.nombre}</p>
-                      <p className="text-xs text-gray-500">{p.marca ? `${p.marca} | ` : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'} | ` : ''}{p.tipo_envase ? `${p.tipo_envase} | ` : ''}Bs {p.precio_unitario} <span className="bg-gray-200 text-gray-700 px-1 py-0.5 rounded text-[10px] font-medium">/{p.unidad_medida}</span></p>
+                {carrito.map((p: any) => {
+                  const uds = p.unidades_por_caja || 1;
+                  const totalUnd = Math.round(p.stock_actual);
+                  const cajasStock = Math.floor(totalUnd / uds);
+                  const undStock = totalUnd % uds;
+                  const descontarUnd = p.tipo_venta === 'caja' ? p.cantidad * uds : p.cantidad;
+                  const restante = totalUnd - descontarUnd;
+                  const cajasRest = restante >= 0 ? Math.floor(restante / uds) : 0;
+                  const undRest = restante >= 0 ? restante % uds : 0;
+                  return (
+                    <div key={p.producto_id} className="border-b border-gray-200 pb-3 mb-1">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-gray-800">{p.nombre}</p>
+                          <p className="text-xs text-gray-500">
+                            {p.marca ? `${p.marca} | ` : ''}
+                            {p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'} | ` : ''}
+                            {p.tipo_envase ? `${p.tipo_envase} | ` : ''}
+                            Bs {p.precio_unitario}
+                            <span className="bg-gray-200 text-gray-700 px-1 py-0.5 rounded text-[10px] font-medium ml-1">
+                              /{p.tipo_venta === 'caja' ? 'caja' : 'unidad'}
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">Stock disponible: <span className="font-medium">{cajasStock} cajas | {undStock} und</span> &rarr; quedar&aacute; <span className="font-medium">{cajasRest} cajas | {undRest} und</span></p>
+                          <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-xs text-blue-600 hover:text-blue-800 mt-1">
+                            {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">-</button>
+                          <span className="w-8 text-center text-gray-800">{p.cantidad}</span>
+                          <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">+</button>
+                        </div>
+                        <div className="text-right ml-2">
+                          <p className="font-bold text-green-600">Bs {p.subtotal}</p>
+                          <button onClick={() => eliminarProducto(p.producto_id)} className="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs hover:bg-red-200 transition-colors font-medium">Eliminar</button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">-</button>
-                      <span className="w-8 text-center text-gray-800">{p.cantidad}</span>
-                      <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">+</button>
-                    </div>
-                    <div className="text-right ml-2">
-                      <p className="font-bold text-green-600">Bs {p.subtotal}</p>
-                      <button onClick={() => eliminarProducto(p.producto_id)} className="text-red-500 text-xs hover:text-red-700">Eliminar</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -209,8 +389,8 @@ export default function NuevaVentaPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
             <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 bg-white text-gray-800 shadow-sm" rows={2} />
 
-            <button onClick={registrarVenta} disabled={!clienteId || carrito.length === 0} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Registrar Venta
+            <button onClick={registrarVenta} disabled={!clienteId || carrito.length === 0 || guardando} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+              {guardando ? <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Guardando...</> : 'Registrar Venta'}
             </button>
           </div>
         </div>
@@ -218,30 +398,49 @@ export default function NuevaVentaPage() {
 
       {showClienteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gray-800 p-6">
+              <div className="flex items-center gap-3 text-white">
+                <div className="p-3 bg-white/20 rounded-xl">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold">Nuevo Cliente</h2>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Nuevo Cliente</h2>
-                <p className="text-xs text-gray-300">Ingresa los datos del cliente</p>
-              </div>
-              <button onClick={() => setShowClienteModal(false)} className="ml-auto text-white/70 hover:text-white">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
             <form onSubmit={crearCliente} className="p-6 space-y-4">
-              <input type="text" placeholder="NIT/CI" value={nuevoCliente.nit_ci} onChange={e => setNuevoCliente({...nuevoCliente, nit_ci: e.target.value})} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" required />
-              <input type="text" placeholder="Nombre" value={nuevoCliente.nombre} onChange={e => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" required />
-              <input type="text" placeholder="Teléfono" value={nuevoCliente.telefono} onChange={e => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" />
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">Guardar</button>
-                <button type="button" onClick={() => setShowClienteModal(false)} className="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-100 text-gray-800 transition-colors">Cancelar</button>
+              {clienteBackendError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm">{clienteBackendError}</div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">NIT/CI</label>
+                <input type="text" name="nit_ci" placeholder="Ingrese NIT o CI (7-12 dígitos)" value={nuevoCliente.nit_ci} onChange={handleClienteChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.nit_ci ? 'border-red-500' : 'border-gray-300'}`} required />
+                {clienteErrors.nit_ci && <p className="text-red-500 text-sm mt-1">{clienteErrors.nit_ci}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                <input type="text" name="nombre" placeholder="Nombre completo" value={nuevoCliente.nombre} onChange={handleClienteChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.nombre ? 'border-red-500' : 'border-gray-300'}`} required />
+                {clienteErrors.nombre && <p className="text-red-500 text-sm mt-1">{clienteErrors.nombre}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
+                <input type="text" name="telefono" placeholder="Número de teléfono" value={nuevoCliente.telefono} onChange={handleClienteChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
+                {clienteErrors.telefono && <p className="text-red-500 text-sm mt-1">{clienteErrors.telefono}</p>}
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Guardar
+                </button>
+                <button type="button" onClick={() => setShowClienteModal(false)} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancelar
+                </button>
               </div>
             </form>
           </div>

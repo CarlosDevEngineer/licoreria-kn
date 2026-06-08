@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
@@ -7,15 +8,15 @@ const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
 const SOLO_DIGITOS = /^\d*$/;
 
 export default function ClientesPage() {
-  const [clientes, setClientes] = useState([]);
+  const [clientes, setClientes] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editando, setEditando] = useState(null);
+  const [editando, setEditando] = useState<any>(null);
   const [form, setForm] = useState({ nit_ci: '', nombre: '', telefono: '' });
   const [errors, setErrors] = useState({ nombre: '', nit_ci: '', telefono: '' });
   const [backendError, setBackendError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
 
   useEffect(() => {
     fetchClientes();
@@ -29,14 +30,14 @@ export default function ClientesPage() {
       });
       const data = await res.json();
       setClientes(Array.isArray(data) ? data : []);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const validarCampo = (name, value) => {
+  const validarCampo = (name: string, value: string) => {
     let error = '';
     if (name === 'nombre' && !SOLO_LETRAS.test(value)) {
       error = 'El nombre solo puede contener letras';
@@ -48,14 +49,18 @@ export default function ClientesPage() {
         error = 'El NIT/CI debe tener entre 7 y 12 dígitos';
       }
     }
-    if (name === 'telefono' && value && !SOLO_DIGITOS.test(value)) {
-      error = 'El teléfono solo puede contener números';
+    if (name === 'telefono' && value) {
+      if (!SOLO_DIGITOS.test(value)) {
+        error = 'El teléfono solo puede contener números';
+      } else if (value.length > 8) {
+        error = 'El teléfono debe tener máximo 8 dígitos';
+      }
     }
     setErrors(prev => ({ ...prev, [name]: error }));
     return error;
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setBackendError('');
@@ -64,7 +69,7 @@ export default function ClientesPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errNombre = validarCampo('nombre', form.nombre);
     const errNit = validarCampo('nit_ci', form.nit_ci);
@@ -98,12 +103,12 @@ export default function ClientesPage() {
       setErrors({ nombre: '', nit_ci: '', telefono: '' });
       setBackendError('');
       fetchClientes();
-    } catch (e) {
+    } catch (e: any) {
       setBackendError('Error de conexión con el servidor');
     }
   };
 
-  const handleEdit = (c) => {
+  const handleEdit = (c: any) => {
     setEditando(c.cliente_id);
     setForm({ nit_ci: c.nit_ci, nombre: c.nombre, telefono: c.telefono || '' });
     setErrors({ nombre: '', nit_ci: '', telefono: '' });
@@ -119,7 +124,7 @@ export default function ClientesPage() {
     setBackendError('');
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: number) => {
     setItemToDelete(id);
     setShowConfirm(true);
   };
@@ -162,7 +167,7 @@ export default function ClientesPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIT/CI</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
@@ -170,9 +175,9 @@ export default function ClientesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {clientes.map((c) => (
+            {clientes.map((c, idx) => (
               <tr key={c.cliente_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-800">{c.cliente_id}</td>
+                <td className="px-6 py-4 text-gray-800">{idx + 1}</td>
                 <td className="px-6 py-4 text-gray-800">{c.nit_ci}</td>
                 <td className="px-6 py-4 text-gray-800">{c.nombre}</td>
                 <td className="px-6 py-4 text-gray-800">{c.telefono || '-'}</td>
@@ -225,7 +230,7 @@ export default function ClientesPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
-                <input type="text" name="telefono" placeholder="Número de teléfono" value={form.telefono} onChange={handleChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
+                <input type="text" name="telefono" value={form.telefono} onChange={handleChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>}
               </div>
               <div className="flex gap-3 pt-4">

@@ -49,15 +49,27 @@ const createVenta = async (req, res) => {
     const venta_id = ventaResult.rows[0].venta_id;
     
     for (const prod of productos) {
-      await client.query(
-        `INSERT INTO ventas_detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [venta_id, prod.producto_id, prod.cantidad, prod.precio_unitario, prod.subtotal]
+      const prodData = await client.query(
+        `SELECT stock_actual, unidades_por_caja FROM productos WHERE producto_id = $1`,
+        [prod.producto_id]
       );
-      
+      const p = prodData.rows[0];
+      if (!p) throw new Error(`Producto ${prod.producto_id} no encontrado`);
+
+      const uds = Number(p.unidades_por_caja) || 1;
+      const totalUnd = Math.round(Number(p.stock_actual));
+      const descontarUnd = prod.tipo_venta === 'caja'
+        ? Number(prod.cantidad) * uds
+        : Number(prod.cantidad);
+
+      if (totalUnd < descontarUnd) {
+        throw new Error(`Stock insuficiente para el producto ID ${prod.producto_id}`);
+      }
+
       await client.query(
-        `UPDATE productos SET stock_actual = stock_actual - $1 WHERE producto_id = $2`,
-        [prod.cantidad, prod.producto_id]
+        `INSERT INTO ventas_detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal, tipo_venta)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [venta_id, prod.producto_id, prod.cantidad, prod.precio_unitario, prod.subtotal, prod.tipo_venta || 'unidad']
       );
     }
     

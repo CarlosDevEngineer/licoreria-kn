@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function VendedorLayout({ children }) {
+export default function VendedorLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
@@ -8,7 +9,7 @@ const SOLO_DIGITOS = /^\d*$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ProveedoresPage() {
-  const [proveedores, setProveedores] = useState([]);
+  const [proveedores, setProveedores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -30,14 +31,14 @@ export default function ProveedoresPage() {
       });
       const data = await res.json();
       setProveedores(Array.isArray(data) ? data : []);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const validarCampo = (name, value) => {
+  const validarCampo = (name: any, value: any) => {
     let error = '';
     if (name === 'nombre' && !SOLO_LETRAS.test(value)) {
       error = 'El nombre solo puede contener letras';
@@ -49,17 +50,21 @@ export default function ProveedoresPage() {
         error = 'El NIT debe tener entre 7 y 12 dígitos';
       }
     }
-    if (name === 'telefono' && value && !SOLO_DIGITOS.test(value)) {
-      error = 'El teléfono solo puede contener números';
+    if (name === 'telefono' && value) {
+      if (!SOLO_DIGITOS.test(value)) {
+        error = 'El teléfono solo puede contener números';
+      } else if (value.length > 8) {
+        error = 'El teléfono debe tener máximo 8 dígitos';
+      }
     }
     if (name === 'contacto' && value && !EMAIL_REGEX.test(value)) {
       error = 'Ingrese un correo electrónico válido';
     }
-    setErrors(prev => ({ ...prev, [name]: error }));
+    setErrors((prev: any) => ({ ...prev, [name]: error }));
     return error;
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
     setForm({ ...form, [name]: val });
@@ -69,7 +74,7 @@ export default function ProveedoresPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     const errNombre = validarCampo('nombre', form.nombre);
     const errNit = validarCampo('nit', form.nit);
@@ -104,12 +109,12 @@ export default function ProveedoresPage() {
       setErrors({ nombre: '', nit: '', telefono: '', contacto: '' });
       setBackendError('');
       fetchProveedores();
-    } catch (e) {
+    } catch (e: any) {
       setBackendError('Error de conexión con el servidor');
     }
   };
 
-  const handleEdit = (p) => {
+  const handleEdit = (p: any) => {
     setEditando(p.proveedor_id);
     setForm({ nombre: p.nombre, nit: p.nit, direccion: p.direccion || '', telefono: p.telefono || '', contacto: p.contacto || '', activo: p.activo });
     setErrors({ nombre: '', nit: '', telefono: '', contacto: '' });
@@ -125,7 +130,7 @@ export default function ProveedoresPage() {
     setBackendError('');
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: any) => {
     setItemToDelete(id);
     setShowConfirm(true);
   };
@@ -168,21 +173,23 @@ export default function ProveedoresPage() {
         <table className="w-full">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase"></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">NIT</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Teléfono</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Estado</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {proveedores.map((p) => (
+            {proveedores.map((p, idx) => (
               <tr key={p.proveedor_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-800">{p.proveedor_id}</td>
+                <td className="px-6 py-4 text-gray-800">{idx + 1}</td>
                 <td className="px-6 py-4 text-gray-800">{p.nombre}</td>
                 <td className="px-6 py-4 text-gray-800">{p.nit}</td>
                 <td className="px-6 py-4 text-gray-800">{p.telefono || '-'}</td>
+                <td className="px-6 py-4 text-gray-800">{p.contacto || '-'}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded-full text-xs ${p.activo ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-800'}`}>
                     {p.activo ? 'Activo' : 'Inactivo'}
@@ -232,22 +239,27 @@ export default function ProveedoresPage() {
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm">{backendError}</div>
               )}
               <div>
-                <input type="text" name="nombre" placeholder="Nombre" value={form.nombre} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.nombre ? 'border-red-500' : 'border-gray-300'}`} required />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                <input type="text" name="nombre" value={form.nombre} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.nombre ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre}</p>}
               </div>
               <div>
-                <input type="text" name="nit" placeholder="NIT (7-12 dígitos)" value={form.nit} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.nit ? 'border-red-500' : 'border-gray-300'}`} required />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">NIT</label>
+                <input type="text" name="nit" value={form.nit} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.nit ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.nit && <p className="text-red-500 text-sm mt-1">{errors.nit}</p>}
               </div>
               <div>
-                <input type="text" name="direccion" placeholder="Dirección" value={form.direccion} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Dirección</label>
+                <input type="text" name="direccion" value={form.direccion} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800" />
               </div>
               <div>
-                <input type="text" name="telefono" placeholder="Teléfono" value={form.telefono} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
+                <input type="text" name="telefono" value={form.telefono} onChange={handleChange} maxLength={8} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>}
               </div>
               <div>
-                <input type="email" name="contacto" placeholder="Correo Electrónico" value={form.contacto} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.contacto ? 'border-red-500' : 'border-gray-300'}`} />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Correo Electrónico</label>
+                <input type="email" name="contacto" value={form.contacto} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.contacto ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.contacto && <p className="text-red-500 text-sm mt-1">{errors.contacto}</p>}
               </div>
               <label className="flex items-center gap-2 text-gray-800">
