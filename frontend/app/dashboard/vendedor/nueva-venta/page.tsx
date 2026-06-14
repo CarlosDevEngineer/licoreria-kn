@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import SuccessModal from '@/app/components/SuccessModal';
+import { formatPrice } from '@/lib/format';
 
 export default function NuevaVentaPage() {
   const [clientes, setClientes] = useState<any[]>([]);
@@ -77,28 +78,26 @@ export default function NuevaVentaPage() {
     const udsPorCaja = Number(producto.unidades_por_caja) || 1;
     setCarrito((prev: any[]) => {
       const existente = prev.find((p: any) => p.producto_id === producto.producto_id);
-      console.log('agregarProducto:', { producto_id: producto.producto_id, nombre: producto.nombre, existente: !!existente, carritoLen: prev.length });
       if (existente) {
         const stockOriginal = Number(producto.stock_actual);
         const undEnCarrito = getUndEnCarrito(producto.producto_id);
         const incUnd = existente.tipo_venta === 'caja' ? udsPorCaja : 1;
         if (undEnCarrito + incUnd <= stockOriginal) {
           const nuevaCant = existente.cantidad + 1;
-          console.log('incrementando cantidad:', { de: existente.cantidad, a: nuevaCant });
           return prev.map((p: any) => p.producto_id === producto.producto_id ? {
             ...p, cantidad: nuevaCant, subtotal: Number((nuevaCant * p.precio_unitario).toFixed(2))
           } : p);
         }
       } else {
-        const pUnitario = Number(producto.precio_venta) * udsPorCaja;
-        console.log('agregando nuevo producto al carrito:', { producto_id: producto.producto_id, udsPorCaja, pUnitario });
+        const esSnack = producto.tipo_producto === 'snack';
+        const pUnitario = esSnack ? Number(producto.precio_venta) / udsPorCaja : Number(producto.precio_venta);
         return [...prev, {
           producto_id: producto.producto_id, nombre: producto.nombre, cantidad: 1,
           precio_unitario: pUnitario, subtotal: pUnitario,
           stock_actual: Number(producto.stock_actual), tipo_producto: producto.tipo_producto,
           marca: producto.marca, presentacion_ml: producto.presentacion_ml,
           tipo_envase: producto.tipo_envase, unidades_por_caja: udsPorCaja,
-          tipo_venta: 'caja'
+          tipo_venta: esSnack ? 'unidad' : 'caja'
         }];
       }
       return prev;
@@ -106,7 +105,6 @@ export default function NuevaVentaPage() {
   };
 
   const toggleTipoVenta = (producto_id: any) => {
-    console.log('toggleTipoVenta:', { producto_id });
     setCarrito(carrito.map((p: any) => {
       if (p.producto_id !== producto_id) return p;
       const nuevoTipo = p.tipo_venta === 'caja' ? 'unidad' : 'caja';
@@ -115,12 +113,10 @@ export default function NuevaVentaPage() {
       const undEnCarrito = getUndEnCarrito(producto_id);
       const undActualesItem = p.tipo_venta === 'caja' ? p.cantidad * uds : p.cantidad;
       const restante = stockOriginal - (undEnCarrito - undActualesItem);
-      const nuevoPrecio = nuevoTipo === 'caja'
-        ? Number(productos.find((pr: any) => pr.producto_id === producto_id)?.precio_venta) * uds
-        : Number(productos.find((pr: any) => pr.producto_id === producto_id)?.precio_venta);
+      const precioBase = Number(productos.find((pr: any) => pr.producto_id === producto_id)?.precio_venta) || 0;
+      const nuevoPrecio = nuevoTipo === 'caja' ? precioBase : precioBase / uds;
       const maxUnd = nuevoTipo === 'caja' ? Math.floor(restante / uds) : restante;
       const nuevaCant = Math.min(p.cantidad, maxUnd || 1);
-      console.log('toggle result:', { de: p.tipo_venta, a: nuevoTipo, cantidad: p.cantidad, nuevaCant, nuevoPrecio, maxUnd });
       return {
         ...p,
         tipo_venta: nuevoTipo,
@@ -132,7 +128,6 @@ export default function NuevaVentaPage() {
   };
 
   const actualizarCantidad = (producto_id: any, cantidad: any) => {
-    console.log('actualizarCantidad:', { producto_id, cantidad });
     if (cantidad <= 0) {
       setCarrito(carrito.filter((p: any) => p.producto_id !== producto_id));
     } else {
@@ -310,7 +305,7 @@ export default function NuevaVentaPage() {
                     <p className="text-xs text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
                     <p className="text-xs text-gray-500">{p.tipo_envase ? `Envase: ${p.tipo_envase}` : ''}</p>
                     <div className="flex justify-between items-center mt-2">
-                      <p className="text-green-600 font-bold text-sm">Bs {p.precio_venta}</p>
+                      <p className="text-green-600 font-bold text-sm">Bs {formatPrice(p.precio_venta)}</p>
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Stock: {formatStockFromUnd(stockOriginal, Number(p.unidades_por_caja) || 1)}</p>
                         <p className="text-[10px] text-gray-400">{p.unidades_por_caja} und/caja &rarr; {info.totalUnd} und</p>
@@ -348,15 +343,17 @@ export default function NuevaVentaPage() {
                             {p.marca ? `${p.marca} | ` : ''}
                             {p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'} | ` : ''}
                             {p.tipo_envase ? `${p.tipo_envase} | ` : ''}
-                            Bs {p.precio_unitario}
+                            Bs {formatPrice(p.precio_unitario)}
                             <span className="bg-gray-200 text-gray-700 px-1 py-0.5 rounded text-[10px] font-medium ml-1">
                               /{p.tipo_venta === 'caja' ? 'caja' : 'unidad'}
                             </span>
                           </p>
                           <p className="text-xs text-gray-400 mt-1">Stock disponible: <span className="font-medium">{cajasStock} cajas | {undStock} und</span> &rarr; quedar&aacute; <span className="font-medium">{cajasRest} cajas | {undRest} und</span></p>
-                          <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-xs text-blue-600 hover:text-blue-800 mt-1">
-                            {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
-                          </button>
+                          {p.tipo_producto !== 'snack' && (
+                            <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-xs text-blue-600 hover:text-blue-800 mt-1">
+                              {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
+                            </button>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 ml-2">
                           <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">-</button>
@@ -364,7 +361,7 @@ export default function NuevaVentaPage() {
                           <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">+</button>
                         </div>
                         <div className="text-right ml-2">
-                          <p className="font-bold text-green-600">Bs {p.subtotal}</p>
+                          <p className="font-bold text-green-600">Bs {formatPrice(p.subtotal)}</p>
                           <button onClick={() => eliminarProducto(p.producto_id)} className="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs hover:bg-red-200 transition-colors font-medium">Eliminar</button>
                         </div>
                       </div>
@@ -377,7 +374,7 @@ export default function NuevaVentaPage() {
 
           <div className="bg-white rounded-xl shadow p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Total</h2>
-            <p className="text-3xl font-bold text-green-600 mb-4">Bs {total}</p>
+            <p className="text-3xl font-bold text-green-600 mb-4">Bs {formatPrice(total)}</p>
             
             <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
             <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 bg-white text-gray-800 shadow-sm">

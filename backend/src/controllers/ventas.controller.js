@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { verificarStockBajo } = require("../services/mail.service");
 
 const getVentas = async (req, res) => {
   try {
@@ -74,6 +75,7 @@ const createVenta = async (req, res) => {
     }
     
     await client.query("COMMIT");
+    verificarStockBajo();
     res.json(ventaResult.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
@@ -102,4 +104,70 @@ const deleteVenta = async (req, res) => {
   }
 };
 
-module.exports = { getVentas, getVentaDetalle, createVenta, deleteVenta };
+const getProductosMasVendidos = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        p.producto_id, p.nombre, p.codigo,
+        SUM(
+          CASE WHEN vd.tipo_venta = 'caja' THEN vd.cantidad * COALESCE(p.unidades_por_caja, 1)
+          ELSE vd.cantidad END
+        )::integer AS total_unidades_vendidas,
+        COUNT(DISTINCT v.venta_id) AS veces_vendido
+      FROM ventas_detalle vd
+      JOIN productos p ON vd.producto_id = p.producto_id
+      JOIN ventas v ON vd.venta_id = v.venta_id
+      WHERE v.estado = 'completada'
+      GROUP BY p.producto_id, p.nombre, p.codigo
+      ORDER BY total_unidades_vendidas DESC
+      LIMIT 10
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getReporteVentas = async (req, res) => {
+  const { desde, hasta } = req.query;
+  try {
+    if (!desde || !hasta) {
+      return res.status(400).json({ error: 'Los parámetros desde y hasta son obligatorios' });
+    }
+    const result = await pool.query(`
+      SELECT
+        v.venta_id, v.fecha_venta, v.subtotal, v.descuento, v.total,
+        v.estado, v.metodo_pago, v.observaciones, v.numero_factura,
+        c.nombre AS cliente_nombre, u.nombre AS usuario_nombre,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'producto_id', p.producto_id,
+              'producto_codigo', p.codigo,
+              'producto_nombre', p.nombre,
+              'cantidad', vd.cantidad,
+              'tipo_venta', vd.tipo_venta,
+              'precio_unitario', vd.precio_unitario,
+              'subtotal', vd.subtotal,
+              'unidades_por_caja', p.unidades_por_caja
+            ) ORDER BY vd.venta_detalle_id
+          ) FILTER (WHERE vd.venta_detalle_id IS NOT NULL),
+          '[]'::json
+        ) AS detalle
+      FROM ventas v
+      LEFT JOIN clientes c ON v.cliente_id = c.cliente_id
+      LEFT JOIN usuarios u ON v.usuario_creacion_id = u.usuario_id
+      LEFT JOIN ventas_detalle vd ON v.venta_id = vd.venta_id
+      LEFT JOIN productos p ON vd.producto_id = p.producto_id
+      WHERE v.fecha_venta >= $1 AND v.fecha_venta < ($2::date + interval '1 day')
+        AND v.estado = 'completada'
+      GROUP BY v.venta_id, c.nombre, u.nombre
+      ORDER BY v.venta_id DESC
+    `, [desde, hasta]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { getVentas, getVentaDetalle, createVenta, deleteVenta, getReporteVentas, getProductosMasVendidos };

@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 
+const fmt = (n: number) => n.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [stats, setStats] = useState({ usuarios: 0, clientes: 0, productos: 0, ventas: 0 });
   const [ventasData, setVentasData] = useState<any[]>([]);
-  const [productosData, setProductosData] = useState<any[]>([]);
+  const [topProductos, setTopProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,16 +34,17 @@ export default function AdminDashboard() {
     }
     const authHeader = { 'Authorization': `Bearer ${token}` };
     try {
-      const [usuarios, clientes, productos, ventas] = await Promise.all([
+      const [usuarios, clientes, productos, ventas, topRes] = await Promise.all([
         fetch('http://localhost:3001/api/auth/users', { headers: authHeader }).then(r => r.json()),
         fetch('http://localhost:3001/api/clientes', { headers: authHeader }).then(r => r.json()),
         fetch('http://localhost:3001/api/productos', { headers: authHeader }).then(r => r.json()),
         fetch('http://localhost:3001/api/ventas', { headers: authHeader }).then(r => r.json()),
+        fetch('http://localhost:3001/api/ventas/productos-mas-vendidos', { headers: authHeader }).then(r => r.json()),
       ]);
-      
+
       const ventasCompletadas = Array.isArray(ventas) ? ventas.filter((v: any) => v.estado === 'completada') : [];
       const productosActivos = Array.isArray(productos) ? productos.filter((p: any) => p.activo) : [];
-      
+
       setStats({
         usuarios: Array.isArray(usuarios) ? usuarios.length : 0,
         clientes: Array.isArray(clientes) ? clientes.length : 0,
@@ -49,16 +52,15 @@ export default function AdminDashboard() {
         ventas: ventasCompletadas.length,
       });
 
-      if (Array.isArray(productos) && productos.length > 0) {
-        const topProductos = productos.slice(0, 6).map((p: any) => ({
-          name: p.nombre?.substring(0, 12) || 'Sin nombre',
-          stock: Math.floor((Number(p.stock_actual) || 0) / (Number(p.unidades_por_caja) || 1)),
-          precio: p.precio_venta || 0,
-          unidades_por_caja: p.unidades_por_caja,
-        }));
-        setProductosData(topProductos);
+      if (Array.isArray(topRes) && topRes.length > 0) {
+        setTopProductos(topRes.slice(0, 8).map((p: any) => ({
+          name: (p.nombre || 'Sin nombre').length > 14 ? p.nombre.substring(0, 14) + '...' : (p.nombre || 'Sin nombre'),
+          vendido: Number(p.total_unidades_vendidas) || 0,
+          veces: Number(p.veces_vendido) || 0,
+          fullName: p.nombre,
+        })));
       } else {
-        setProductosData([]);
+        setTopProductos([]);
       }
 
       if (Array.isArray(ventas) && ventas.length > 0) {
@@ -79,7 +81,7 @@ export default function AdminDashboard() {
     } catch (e: any) {
       console.error(e);
       setVentasData([{ name: 'Error', ventas: 0 }]);
-      setProductosData([]);
+      setTopProductos([]);
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Panel de Administrador</h1>
         <p className="text-gray-500">Bienvenido, {username}</p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {cards.map((card) => (
           <div
@@ -129,37 +131,38 @@ export default function AdminDashboard() {
             <BarChart data={ventasData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="name" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" />
-              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#374151' }} />
+              <YAxis stroke="#6b7280" tickFormatter={(v: any) => `Bs ${fmt(Number(v))}`} />
+              <Tooltip
+                formatter={(value: any) => [`Bs ${fmt(Number(value))}`, 'Ventas']}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#374151' }}
+              />
               <Bar dataKey="ventas" fill="#374151" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Stock de Productos</h3>
-          {productosData.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-3 py-2 text-left">Producto</th>
-                  <th className="px-3 py-2 text-right">Stock (Caja)</th>
-                  <th className="px-3 py-2 text-right">Precio</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {productosData.map((p, i) => (
-                  <tr key={i}>
-                    <td className="px-3 py-2">{p.name}</td>
-                    <td className={`px-3 py-2 text-right ${p.stock <= 1 ? 'text-red-600 font-bold' : 'text-green-600'}`}>{p.stock}</td>
-                    <td className="px-3 py-2 text-right">Bs {p.precio}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Productos más vendidos</h3>
+          {topProductos.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={topProductos} layout="vertical" margin={{ left: 10, right: 30 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis type="number" stroke="#6b7280" />
+                <YAxis type="category" dataKey="name" stroke="#6b7280" width={110} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value: any, name: any) => [
+                    `${value} unidad${value !== 1 ? 'es' : ''}`,
+                    name === 'vendido' ? 'Unidades vendidas' : name,
+                  ]}
+                  labelFormatter={(label: any, payload: any) => payload?.[0]?.payload?.fullName || label}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#374151' }}
+                />
+                <Bar dataKey="vendido" fill="#374151" radius={[0, 8, 8, 0]} maxBarSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
             <div className="h-64 flex items-center justify-center text-gray-400">
-              No hay productos registrados
+              No hay ventas registradas
             </div>
           )}
         </div>
@@ -171,8 +174,11 @@ export default function AdminDashboard() {
           <LineChart data={ventasData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="name" stroke="#6b7280" />
-            <YAxis stroke="#6b7280" />
-            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#374151' }} />
+              <YAxis stroke="#6b7280" tickFormatter={(v: any) => `Bs ${fmt(Number(v))}`} />
+            <Tooltip
+              formatter={(value: any) => [`Bs ${fmt(Number(value))}`, 'Ventas']}
+              contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#374151' }}
+            />
             <Legend />
             <Line type="monotone" dataKey="ventas" stroke="#374151" strokeWidth={3} dot={{ fill: '#374151', strokeWidth: 2, r: 5 }} />
           </LineChart>

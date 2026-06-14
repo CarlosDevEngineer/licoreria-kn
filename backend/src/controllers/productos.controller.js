@@ -6,7 +6,7 @@ const getProductos = async (req, res) => {
       SELECT p.*, pr.nombre as proveedor_nombre, pr.contacto as proveedor_email
       FROM productos p
       LEFT JOIN proveedores pr ON p.proveedor_id = pr.proveedor_id
-      ORDER BY p.producto_id DESC
+      ORDER BY p.producto_id ASC
     `);
     res.json(result.rows);
   } catch (error) {
@@ -18,18 +18,15 @@ const createProducto = async (req, res) => {
   const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
   const usuario_creacion_id = req.user?.id;
   try {
+    const seqResult = await pool.query("SELECT nextval('productos_producto_id_seq'::regclass) AS next_id");
+    const nextId = seqResult.rows[0].next_id;
+    const codigo = `PR-${nextId}`;
     const result = await pool.query(
-      `INSERT INTO productos (nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id || null]
+      `INSERT INTO productos (nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id || null]
     );
-    const newProducto = result.rows[0];
-    const codigo = `PR-${newProducto.producto_id}`;
-    const updateResult = await pool.query(
-      `UPDATE productos SET codigo = $1 WHERE producto_id = $2 RETURNING *`,
-      [codigo, newProducto.producto_id]
-    );
-    res.json(updateResult.rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

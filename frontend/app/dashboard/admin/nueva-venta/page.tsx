@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import SuccessModal from '@/app/components/SuccessModal';
+import { formatPrice } from '@/lib/format';
 
 export default function NuevaVentaPage() {
   const [clientes, setClientes] = useState<any[]>([]);
@@ -91,14 +92,15 @@ export default function NuevaVentaPage() {
         } : p));
       }
     } else {
-      const pUnitario = Number(producto.precio_venta) * udsPorCaja;
+      const esSnack = producto.tipo_producto === 'snack';
+      const pUnitario = esSnack ? Number(producto.precio_venta) / udsPorCaja : Number(producto.precio_venta);
       setCarrito([...carrito, {
         producto_id: producto.producto_id, nombre: producto.nombre, cantidad: 1,
         precio_unitario: pUnitario, subtotal: pUnitario,
         stock_actual: Number(producto.stock_actual), tipo_producto: producto.tipo_producto,
         marca: producto.marca, presentacion_ml: producto.presentacion_ml,
         tipo_envase: producto.tipo_envase, unidades_por_caja: udsPorCaja,
-        tipo_venta: 'caja'
+        tipo_venta: esSnack ? 'unidad' : 'caja'
       }]);
     }
   };
@@ -112,9 +114,8 @@ export default function NuevaVentaPage() {
       const undEnCarrito = getUndEnCarrito(producto_id);
       const undActualesItem = p.tipo_venta === 'caja' ? p.cantidad * uds : p.cantidad;
       const restante = stockOriginal - (undEnCarrito - undActualesItem);
-      const nuevoPrecio = nuevoTipo === 'caja'
-        ? Number(productos.find(pr => pr.producto_id === producto_id)?.precio_venta) * uds
-        : Number(productos.find(pr => pr.producto_id === producto_id)?.precio_venta);
+      const precioBase = Number(productos.find(pr => pr.producto_id === producto_id)?.precio_venta) || 0;
+      const nuevoPrecio = nuevoTipo === 'caja' ? precioBase : precioBase / uds;
       const maxUnd = nuevoTipo === 'caja' ? Math.floor(restante / uds) : restante;
       const nuevaCant = Math.min(p.cantidad, maxUnd || 1);
       return {
@@ -299,7 +300,7 @@ export default function NuevaVentaPage() {
                     <p className="text-xs text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
                     <p className="text-xs text-gray-500">{p.tipo_envase ? `Envase: ${p.tipo_envase}` : ''}</p>
                     <div className="flex justify-between items-center mt-2">
-                      <p className="text-green-600 font-bold text-sm">Bs {p.precio_venta}</p>
+                      <p className="text-green-600 font-bold text-sm">Bs {formatPrice(p.precio_venta)}</p>
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Stock: {formatStockFromUnd(stockOriginal, Number(p.unidades_por_caja) || 1)}</p>
                         <p className="text-[10px] text-gray-400">{p.unidades_por_caja} und/caja &rarr; {info.totalUnd} und</p>
@@ -337,15 +338,17 @@ export default function NuevaVentaPage() {
                             {p.marca ? `${p.marca} | ` : ''}
                             {p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'} | ` : ''}
                             {p.tipo_envase ? `${p.tipo_envase} | ` : ''}
-                            Bs {p.precio_unitario}
+                            Bs {formatPrice(p.precio_unitario)}
                             <span className="bg-gray-200 text-gray-700 px-1 py-0.5 rounded text-[10px] font-medium ml-1">
                               /{p.tipo_venta === 'caja' ? 'caja' : 'unidad'}
                             </span>
                           </p>
                           <p className="text-xs text-gray-400 mt-1">Stock disponible: <span className="font-medium">{cajasStock} cajas | {undStock} und</span> &rarr; quedar&aacute; <span className="font-medium">{cajasRest} cajas | {undRest} und</span></p>
-                          <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-xs text-blue-600 hover:text-blue-800 mt-1">
-                            {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
-                          </button>
+                          {p.tipo_producto !== 'snack' && (
+                            <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-xs text-blue-600 hover:text-blue-800 mt-1">
+                              {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
+                            </button>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 ml-2">
                           <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">-</button>
@@ -353,7 +356,7 @@ export default function NuevaVentaPage() {
                           <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">+</button>
                         </div>
                         <div className="text-right ml-2">
-                          <p className="font-bold text-green-600">Bs {p.subtotal}</p>
+                          <p className="font-bold text-green-600">Bs {formatPrice(p.subtotal)}</p>
                           <button onClick={() => eliminarProducto(p.producto_id)} className="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs hover:bg-red-200 transition-colors font-medium">Eliminar</button>
                         </div>
                       </div>
@@ -366,7 +369,7 @@ export default function NuevaVentaPage() {
 
           <div className="bg-white rounded-xl shadow p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Total</h2>
-            <p className="text-3xl font-bold text-green-600 mb-4">Bs {total}</p>
+            <p className="text-3xl font-bold text-green-600 mb-4">Bs {formatPrice(total)}</p>
             
             <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
             <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 bg-white text-gray-800 shadow-sm">
@@ -387,30 +390,54 @@ export default function NuevaVentaPage() {
 
       {showClienteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gray-800 p-6">
+              <div className="flex items-center gap-3 text-white">
+                <div className="p-3 bg-white/20 rounded-xl">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold">Nuevo Cliente</h2>
+                <button onClick={() => setShowClienteModal(false)} className="ml-auto text-white/70 hover:text-white">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Nuevo Cliente</h2>
-                <p className="text-xs text-gray-300">Ingresa los datos del cliente</p>
-              </div>
-              <button onClick={() => setShowClienteModal(false)} className="ml-auto text-white/70 hover:text-white">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
             <form onSubmit={crearCliente} className="p-6 space-y-4">
-              <input type="text" placeholder="NIT/CI" value={nuevoCliente.nit_ci} onChange={e => setNuevoCliente({...nuevoCliente, nit_ci: e.target.value})} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" required />
-              <input type="text" placeholder="Nombre" value={nuevoCliente.nombre} onChange={e => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" required />
-              <input type="text" value={nuevoCliente.telefono} onChange={e => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} maxLength={8} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" />
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">Guardar</button>
-                <button type="button" onClick={() => setShowClienteModal(false)} className="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-100 text-gray-800 transition-colors">Cancelar</button>
+              {clienteBackendError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm">{clienteBackendError}</div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">NIT/CI</label>
+                <input type="text" name="nit_ci" placeholder="Ingrese NIT o CI (7-12 dígitos)" value={nuevoCliente.nit_ci} onChange={handleClienteChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.nit_ci ? 'border-red-500' : 'border-gray-300'}`} required />
+                {clienteErrors.nit_ci && <p className="text-red-500 text-sm mt-1">{clienteErrors.nit_ci}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                <input type="text" name="nombre" placeholder="Nombre completo" value={nuevoCliente.nombre} onChange={handleClienteChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.nombre ? 'border-red-500' : 'border-gray-300'}`} required />
+                {clienteErrors.nombre && <p className="text-red-500 text-sm mt-1">{clienteErrors.nombre}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
+                <input type="text" name="telefono" value={nuevoCliente.telefono} onChange={handleClienteChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
+                {clienteErrors.telefono && <p className="text-red-500 text-sm mt-1">{clienteErrors.telefono}</p>}
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Guardar
+                </button>
+                <button type="button" onClick={() => setShowClienteModal(false)} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancelar
+                </button>
               </div>
             </form>
           </div>

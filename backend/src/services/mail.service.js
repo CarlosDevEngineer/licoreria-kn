@@ -9,6 +9,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: { rejectUnauthorized: false },
 });
 
 const enviarAlertaStockBajo = async (producto, proveedorEmail, proveedorNombre) => {
@@ -27,7 +28,7 @@ const enviarAlertaStockBajo = async (producto, proveedorEmail, proveedorNombre) 
     html: `
       <h2>Alerta de Stock Bajo</h2>
       <p>Estimado ${proveedorNombre},</p>
-      <p>El producto ${producto.nombre} tiene ${stockStr} en stock (mínimo recomendado: 1 caja)</p>
+      <p>El producto <strong>${producto.nombre}</strong> tiene <strong>${stockStr}</strong> en stock (mínimo recomendado: 1 caja).</p>
       <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
         <tr><th>Código</th><td>${producto.codigo}</td></tr>
         <tr><th>Producto</th><td>${producto.nombre}</td></tr>

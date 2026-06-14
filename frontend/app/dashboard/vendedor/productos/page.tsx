@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
+import { formatPrice } from '@/lib/format';
 
 export default function ProductosVendedorPage() {
   const [productos, setProductos] = useState<any[]>([]);
@@ -306,7 +307,7 @@ export default function ProductosVendedorPage() {
                     {formatStock(p)}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-gray-800">Bs {p.precio_venta}</td>
+                <td className="px-6 py-4 text-gray-800">Bs {formatPrice(p.precio_venta)}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded-full text-xs ${p.activo ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'}`}>
                     {p.activo ? 'Activo' : 'Inactivo'}
