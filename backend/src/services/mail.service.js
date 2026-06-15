@@ -24,19 +24,49 @@ const enviarAlertaStockBajo = async (producto, proveedorEmail, proveedorNombre) 
   const mailOptions = {
     from: `"Licorería KN" <${process.env.SMTP_USER}>`,
     to: proveedorEmail,
-    subject: `ALERTA: Stock bajo - ${producto.nombre}`,
+    subject: `🔴 ALERTA: Stock bajo - ${producto.nombre}`,
     html: `
-      <h2>Alerta de Stock Bajo</h2>
-      <p>Estimado ${proveedorNombre},</p>
-      <p>El producto <strong>${producto.nombre}</strong> tiene <strong>${stockStr}</strong> en stock (mínimo recomendado: 1 caja).</p>
-      <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
-        <tr><th>Código</th><td>${producto.codigo}</td></tr>
-        <tr><th>Producto</th><td>${producto.nombre}</td></tr>
-        <tr><th>Stock actual</th><td>${stockStr}</td></tr>
-      </table>
-      <p>Por favor, realice el pedido de reposición lo antes posible.</p>
-      <hr>
-      <p style="color:gray;font-size:12px;">Licorería KN - Sistema de Gestión</p>
+      <div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;">
+        <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:30px 40px;border-radius:12px 12px 0 0;text-align:center;">
+          <div style="font-size:40px;margin-bottom:8px;">🍾</div>
+          <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;">Licorería KN</h1>
+          <p style="color:#a0aec0;margin:4px 0 0;font-size:13px;">Sistema de Gestión de Inventario</p>
+        </div>
+
+        <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:15px 20px;margin:20px 0;border-radius:6px;">
+          <p style="margin:0;color:#856404;font-size:15px;font-weight:600;">⚠️ Alerta de Stock Bajo</p>
+          <p style="margin:4px 0 0;color:#856404;font-size:14px;">El producto <strong>${producto.nombre}</strong> est&aacute; por agotarse.</p>
+        </div>
+
+        <p style="color:#333;font-size:15px;line-height:1.6;">Estimado <strong>${proveedorNombre}</strong>,</p>
+        <p style="color:#555;font-size:14px;line-height:1.6;">Solicitamos la reposici&oacute;n del siguiente producto, cuyo stock actual es menor al m&iacute;nimo recomendado:</p>
+
+        <table style="width:100%;border-collapse:separate;border-spacing:0;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin:20px 0;">
+          <tr>
+            <th style="background:#1a1a2e;color:#fff;padding:12px 20px;text-align:left;font-size:13px;font-weight:600;width:140px;border-bottom:1px solid #2a2a4e;">C&oacute;digo</th>
+            <td style="padding:12px 20px;font-size:14px;color:#333;background:#f9fafb;border-bottom:1px solid #e5e7eb;">${producto.codigo}</td>
+          </tr>
+          <tr>
+            <th style="background:#1a1a2e;color:#fff;padding:12px 20px;text-align:left;font-size:13px;font-weight:600;border-bottom:1px solid #2a2a4e;">Producto</th>
+            <td style="padding:12px 20px;font-size:14px;color:#333;background:#ffffff;border-bottom:1px solid #e5e7eb;">${producto.nombre}</td>
+          </tr>
+          <tr>
+            <th style="background:#1a1a2e;color:#fff;padding:12px 20px;text-align:left;font-size:13px;font-weight:600;border-bottom:1px solid #2a2a4e;">Stock actual</th>
+            <td style="padding:12px 20px;font-size:14px;color:#333;background:#f9fafb;border-bottom:1px solid #e5e7eb;"><strong style="color:#dc2626;">${stockStr}</strong></td>
+          </tr>
+          <tr>
+            <th style="background:#1a1a2e;color:#fff;padding:12px 20px;text-align:left;font-size:13px;font-weight:600;">M&iacute;nimo recomendado</th>
+            <td style="padding:12px 20px;font-size:14px;color:#333;background:#ffffff;">1 caja</td>
+          </tr>
+        </table>
+
+        <p style="color:#555;font-size:14px;line-height:1.6;">Por favor, realice el pedido de reposici&oacute;n a la brevedad posible para evitar desabastecimiento.</p>
+
+        <div style="border-top:2px solid #e5e7eb;margin-top:30px;padding-top:20px;text-align:center;">
+          <p style="color:#9ca3af;font-size:12px;margin:0;">Licorería KN &bull; Sistema de Gesti&oacute;n de Inventario</p>
+          <p style="color:#9ca3af;font-size:11px;margin:4px 0 0;">Este es un mensaje autom&aacute;tico. No responda a este correo.</p>
+        </div>
+      </div>
     `,
   };
 

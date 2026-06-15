@@ -262,7 +262,7 @@ export default function ProductosVendedorPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Productos</h1>
-        <button onClick={resetForm} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2">
+        <button onClick={resetForm} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2 cursor-pointer">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
@@ -296,7 +296,7 @@ export default function ProductosVendedorPage() {
                 <td className="px-6 py-4 text-gray-800">PR-{p.producto_id}</td>
                 <td className="px-6 py-4 text-gray-800">{p.nombre}</td>
                 <td className="px-6 py-4">
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="px-2 py-1 rounded-[5px] text-xs font-medium bg-blue-300 text-blue-900">
                     {p.tipo_producto}
                   </span>
                 </td>
@@ -355,7 +355,7 @@ export default function ProductosVendedorPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
-                <select value={form.tipo_producto} onChange={e => handleFieldChange('tipo_producto', e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white">
+                <select value={form.tipo_producto} onChange={e => handleFieldChange('tipo_producto', e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white cursor-pointer">
                   <option value="bebida">Bebida</option>
                   <option value="snack">Snack</option>
                   <option value="otro">Otro</option>
@@ -426,7 +426,7 @@ export default function ProductosVendedorPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Proveedor</label>
-                <select value={form.proveedor_id} onChange={e => handleFieldChange('proveedor_id', e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white">
+                <select value={form.proveedor_id} onChange={e => handleFieldChange('proveedor_id', e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white cursor-pointer">
                   <option value="">Sin proveedor</option>
                   {proveedores.map(pr => (
                     <option key={pr.proveedor_id} value={pr.proveedor_id}>{pr.nombre}</option>
@@ -439,13 +439,13 @@ export default function ProductosVendedorPage() {
                 <span className="font-semibold">Producto activo</span>
               </label>
               <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2">
+                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Guardar
                 </button>
-                <button type="button" onClick={closeModal} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center gap-2">
+                <button type="button" onClick={closeModal} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>

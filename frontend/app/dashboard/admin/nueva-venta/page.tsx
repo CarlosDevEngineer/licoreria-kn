@@ -269,9 +269,9 @@ export default function NuevaVentaPage() {
           <div className="bg-white rounded-xl shadow p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-800">Seleccionar Cliente</h2>
-              <button onClick={() => setShowClienteModal(true)} className="text-green-600 hover:text-green-700 text-sm font-medium">+ Nuevo Cliente</button>
+              <button onClick={() => setShowClienteModal(true)} className="text-green-600 hover:text-green-700 text-sm font-medium cursor-pointer">+ Nuevo Cliente</button>
             </div>
-            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm">
+            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm cursor-pointer">
               <option value="">Seleccionar cliente</option>
               {clientes.map(c => <option key={c.cliente_id} value={c.cliente_id}>{c.nombre} ({c.nit_ci})</option>)}
             </select>
@@ -280,10 +280,10 @@ export default function NuevaVentaPage() {
           <div className="bg-white rounded-xl shadow p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Productos</h2>
             <div className="mb-4 flex gap-2">
-              <button onClick={() => setFiltroTipo('todos')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filtroTipo === 'todos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Todos</button>
-              <button onClick={() => setFiltroTipo('bebida')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filtroTipo === 'bebida' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Bebidas</button>
-              <button onClick={() => setFiltroTipo('snack')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filtroTipo === 'snack' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Snacks</button>
-              <button onClick={() => setFiltroTipo('otro')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filtroTipo === 'otro' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Otros</button>
+              <button onClick={() => setFiltroTipo('todos')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'todos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Todos</button>
+              <button onClick={() => setFiltroTipo('bebida')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'bebida' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Bebidas</button>
+              <button onClick={() => setFiltroTipo('snack')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'snack' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Snacks</button>
+              <button onClick={() => setFiltroTipo('otro')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'otro' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Otros</button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {productos.filter(p => filtroTipo === 'todos' || p.tipo_producto === filtroTipo).map(p => {
@@ -292,7 +292,7 @@ export default function NuevaVentaPage() {
                 return (
                   <div key={p.producto_id} onClick={() => agregarProducto(p)} className="border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors">
                     <div className="flex items-center gap-1 mb-1">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.tipo_producto === 'bebida' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                      <span className={`px-2 py-0.5 rounded-[5px] text-xs font-medium ${p.tipo_producto === 'bebida' ? 'bg-blue-300 text-blue-900' : 'bg-orange-300 text-orange-900'}`}>
                         {p.tipo_producto}
                       </span>
                     </div>
@@ -315,11 +315,22 @@ export default function NuevaVentaPage() {
 
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Carrito</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+              </svg>
+              Carrito
+              <span className="ml-auto text-sm font-normal text-gray-400">{carrito.length} producto{carrito.length !== 1 ? 's' : ''}</span>
+            </h2>
             {carrito.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">Sin productos</p>
+              <div className="text-gray-400 text-center py-8 flex flex-col items-center gap-2">
+                <svg className="w-12 h-12 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+                </svg>
+                <p className="text-sm">Sin productos en el carrito</p>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {carrito.map(p => {
                   const uds = p.unidades_por_caja || 1;
                   const totalUnd = Math.round(p.stock_actual);
@@ -330,34 +341,47 @@ export default function NuevaVentaPage() {
                   const cajasRest = restante >= 0 ? Math.floor(restante / uds) : 0;
                   const undRest = restante >= 0 ? restante % uds : 0;
                   return (
-                    <div key={p.producto_id} className="border-b border-gray-200 pb-3 mb-1">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm text-gray-800">{p.nombre}</p>
-                          <p className="text-xs text-gray-500">
+                    <div key={p.producto_id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-base text-gray-800 truncate">{p.nombre}</p>
+                            <span className={`px-2 py-0.5 rounded-[5px] text-xs font-medium shrink-0 ${p.tipo_producto === 'bebida' ? 'bg-blue-300 text-blue-900' : 'bg-orange-300 text-orange-900'}`}>
+                              {p.tipo_producto}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500">
                             {p.marca ? `${p.marca} | ` : ''}
                             {p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'} | ` : ''}
                             {p.tipo_envase ? `${p.tipo_envase} | ` : ''}
-                            Bs {formatPrice(p.precio_unitario)}
-                            <span className="bg-gray-200 text-gray-700 px-1 py-0.5 rounded text-[10px] font-medium ml-1">
+                            <span className="font-medium text-gray-700">Bs {formatPrice(p.precio_unitario)}</span>
+                            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[11px] font-medium ml-1.5">
                               /{p.tipo_venta === 'caja' ? 'caja' : 'unidad'}
                             </span>
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">Stock disponible: <span className="font-medium">{cajasStock} cajas | {undStock} und</span> &rarr; quedar&aacute; <span className="font-medium">{cajasRest} cajas | {undRest} und</span></p>
+                          <p className="text-sm text-gray-400 mt-1.5">
+                            <span className="text-gray-500">Stock:</span> <span className="font-medium text-gray-600">{cajasStock} cajas | {undStock} und</span>
+                            <span className="mx-1.5 text-gray-300">&rarr;</span>
+                            <span className="text-gray-500">Queda:</span> <span className="font-medium text-gray-600">{cajasRest} cajas | {undRest} und</span>
+                          </p>
                           {p.tipo_producto !== 'snack' && (
-                            <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-xs text-blue-600 hover:text-blue-800 mt-1">
-                              {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
+                            <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-sm text-blue-600 hover:text-blue-800 mt-1.5 font-medium cursor-pointer">
+                              {p.tipo_venta === 'caja' ? '↻ Vender por unidad' : '↻ Vender por caja'}
                             </button>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">-</button>
-                          <span className="w-8 text-center text-gray-800">{p.cantidad}</span>
-                          <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-6 h-6 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">+</button>
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                            <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-8 h-8 bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold text-lg flex items-center justify-center transition-colors cursor-pointer">-</button>
+                            <span className="w-10 text-center font-semibold text-gray-800 text-sm border-x border-gray-200 h-8 flex items-center justify-center">{p.cantidad}</span>
+                            <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-8 h-8 bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold text-lg flex items-center justify-center transition-colors cursor-pointer">+</button>
+                          </div>
                         </div>
-                        <div className="text-right ml-2">
-                          <p className="font-bold text-green-600">Bs {formatPrice(p.subtotal)}</p>
-                          <button onClick={() => eliminarProducto(p.producto_id)} className="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs hover:bg-red-200 transition-colors font-medium">Eliminar</button>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-green-600 text-base">Bs {formatPrice(p.subtotal)}</p>
+                          <button onClick={() => eliminarProducto(p.producto_id)} className="mt-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition-colors font-medium border border-red-200 cursor-pointer">
+                            Eliminar
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -368,20 +392,20 @@ export default function NuevaVentaPage() {
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Total</h2>
-            <p className="text-3xl font-bold text-green-600 mb-4">Bs {formatPrice(total)}</p>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Total</h2>
+            <p className="text-4xl font-bold text-green-600 mb-6">Bs {formatPrice(total)}</p>
             
-            <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
-            <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 bg-white text-gray-800 shadow-sm">
+            <label className="block text-base font-semibold text-gray-700 mb-2">Método de Pago</label>
+            <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-3 mb-5 bg-white text-gray-800 shadow-sm text-base cursor-pointer">
               <option value="efectivo">Efectivo</option>
               <option value="tarjeta">Tarjeta</option>
               <option value="qr">QR</option>
             </select>
 
-            <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
-            <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 bg-white text-gray-800 shadow-sm" rows={2} />
+            <label className="block text-base font-semibold text-gray-700 mb-2">Observaciones</label>
+            <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-3 mb-5 bg-white text-gray-800 shadow-sm text-base" rows={2} />
 
-            <button onClick={registrarVenta} disabled={!clienteId || carrito.length === 0} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            <button onClick={registrarVenta} disabled={!clienteId || carrito.length === 0} className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-200 cursor-pointer">
               Registrar Venta
             </button>
           </div>
@@ -399,7 +423,7 @@ export default function NuevaVentaPage() {
                   </svg>
                 </div>
                 <h2 className="text-2xl font-bold">Nuevo Cliente</h2>
-                <button onClick={() => setShowClienteModal(false)} className="ml-auto text-white/70 hover:text-white">
+                <button onClick={() => setShowClienteModal(false)} className="ml-auto text-white/70 hover:text-white cursor-pointer">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -426,13 +450,13 @@ export default function NuevaVentaPage() {
                 {clienteErrors.telefono && <p className="text-red-500 text-sm mt-1">{clienteErrors.telefono}</p>}
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2">
+                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Guardar
                 </button>
-                <button type="button" onClick={() => setShowClienteModal(false)} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center gap-2">
+                <button type="button" onClick={() => setShowClienteModal(false)} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -470,7 +494,7 @@ export default function NuevaVentaPage() {
             <div className="p-6">
               <button
                 onClick={() => setShowError(false)}
-                className="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold"
+                className="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold cursor-pointer"
               >
                 Aceptar
               </button>

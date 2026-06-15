@@ -51,7 +51,7 @@ const createVenta = async (req, res) => {
     
     for (const prod of productos) {
       const prodData = await client.query(
-        `SELECT stock_actual, unidades_por_caja FROM productos WHERE producto_id = $1`,
+        `SELECT stock_actual, unidades_por_caja, nombre, categoria FROM productos WHERE producto_id = $1`,
         [prod.producto_id]
       );
       const p = prodData.rows[0];
@@ -64,7 +64,7 @@ const createVenta = async (req, res) => {
         : Number(prod.cantidad);
 
       if (totalUnd < descontarUnd) {
-        throw new Error(`Stock insuficiente para el producto ID ${prod.producto_id}`);
+        throw new Error(`Stock insuficiente para "${p.nombre}" (${p.categoria})`);
       }
 
       await client.query(

@@ -15,6 +15,28 @@ function getWeekRange(d: Date) {
   return { desde: start, hasta: end };
 }
 
+function formatDateStr(dateStr: string) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function getPeriodoLabel(periodo: Periodo, desde: string, hasta: string) {
+  if (periodo === 'dia') {
+    const now = new Date();
+    return `Hoy (${now.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })})`;
+  }
+  if (periodo === 'semana') {
+    const r = getWeekRange(new Date());
+    const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return `Semana del ${fmt(r.desde)} al ${fmt(r.hasta)}`;
+  }
+  if (periodo === 'mes') {
+    const now = new Date();
+    return now.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+  }
+  return `${formatDateStr(desde)} - ${formatDateStr(hasta)}`;
+}
+
 export default function VentasVendedorPage() {
   const [ventas, setVentas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,30 +101,36 @@ export default function VentasVendedorPage() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Mis Ventas</h1>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-            {(['dia', 'semana', 'mes', 'personalizado'] as Periodo[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriodo(p)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  periodo === p ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {p === 'dia' ? 'Hoy' : p === 'semana' ? 'Semana' : p === 'mes' ? 'Mes' : 'Personalizado'}
-              </button>
-            ))}
-          </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Período:</span>
+          {(['dia', 'semana', 'mes', 'personalizado'] as Periodo[]).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriodo(p)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                periodo === p ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {p === 'dia' ? 'Hoy' : p === 'semana' ? 'Esta semana' : p === 'mes' ? 'Este mes' : 'Personalizado'}
+            </button>
+          ))}
           {periodo === 'personalizado' && (
-            <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border border-gray-200 px-3 py-1.5">
-              <input type="date" value={customDesde} onChange={e => setCustomDesde(e.target.value)} className="text-xs text-gray-700 border-none outline-none bg-transparent w-28" />
-              <span className="text-gray-400">-</span>
-              <input type="date" value={customHasta} onChange={e => setCustomHasta(e.target.value)} className="text-xs text-gray-700 border-none outline-none bg-transparent w-28" />
+            <div className="flex items-center gap-2 ml-2">
+              <input type="date" value={customDesde} onChange={e => setCustomDesde(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              <span className="text-gray-400">a</span>
+              <input type="date" value={customHasta} onChange={e => setCustomHasta(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
             </div>
           )}
         </div>
+        <p className="text-xs text-gray-400 mt-2">
+          {getPeriodoLabel(periodo, customDesde, customHasta)}
+          {!loading && ` — ${ventasFiltradas.length} venta${ventasFiltradas.length !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {ventasFiltradas.length === 0 ? (
