@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios
 CREATE TABLE IF NOT EXISTS public.ventas
 (
     venta_id serial NOT NULL,
-    cliente_id integer NOT NULL,
+    cliente_id integer,
     fecha_venta timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     subtotal numeric(10, 2) NOT NULL,
     descuento numeric(10, 2) DEFAULT 0,
@@ -144,7 +144,7 @@ ALTER TABLE IF EXISTS public.clientes
     ADD CONSTRAINT clientes_usuario_creacion_id_fkey FOREIGN KEY (usuario_creacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.compras
@@ -158,7 +158,7 @@ ALTER TABLE IF EXISTS public.compras
     ADD CONSTRAINT compras_usuario_creacion_id_fkey FOREIGN KEY (usuario_creacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.compras
@@ -218,7 +218,7 @@ ALTER TABLE IF EXISTS public.inventario_movimientos
     ADD CONSTRAINT inventario_movimientos_usuario_id_fkey FOREIGN KEY (usuario_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.productos
@@ -232,28 +232,28 @@ ALTER TABLE IF EXISTS public.productos
     ADD CONSTRAINT productos_usuario_creacion_id_fkey FOREIGN KEY (usuario_creacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.productos
     ADD CONSTRAINT productos_usuario_modificacion_id_fkey FOREIGN KEY (usuario_modificacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.proveedores
     ADD CONSTRAINT proveedores_usuario_creacion_id_fkey FOREIGN KEY (usuario_creacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.usuarios
     ADD CONSTRAINT usuarios_usuario_modificacion_id_fkey FOREIGN KEY (usuario_modificacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.ventas
@@ -267,14 +267,14 @@ ALTER TABLE IF EXISTS public.ventas
     ADD CONSTRAINT ventas_cliente_id_fkey FOREIGN KEY (cliente_id)
     REFERENCES public.clientes (cliente_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.ventas
     ADD CONSTRAINT ventas_usuario_creacion_id_fkey FOREIGN KEY (usuario_creacion_id)
     REFERENCES public.usuarios (usuario_id) MATCH SIMPLE
     ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.ventas_detalle
@@ -298,5 +298,22 @@ ALTER TABLE IF EXISTS public.ventas_detalle
     REFERENCES public.ventas (venta_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
+
+-- Auto-generate codigo for productos if not provided
+CREATE OR REPLACE FUNCTION auto_generar_codigo_producto()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.codigo IS NULL THEN
+    NEW.codigo := 'PR-' || NEW.producto_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auto_generar_codigo ON productos;
+CREATE TRIGGER trg_auto_generar_codigo
+  BEFORE INSERT ON productos
+  FOR EACH ROW
+  EXECUTE FUNCTION auto_generar_codigo_producto();
 
 END;

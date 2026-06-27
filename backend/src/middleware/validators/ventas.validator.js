@@ -1,9 +1,6 @@
 const { body } = require("express-validator");
 
 const ventaValidator = [
-  body("cliente_id")
-    .notEmpty().withMessage("El cliente es obligatorio")
-    .isInt({ min: 1 }).withMessage("El cliente debe ser un ID válido"),
   body("productos")
     .isArray({ min: 1 }).withMessage("Debe incluir al menos un producto"),
   body("productos.*.producto_id")

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 
-const fmt = (n: number) => n.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n: number) => n.toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -35,11 +35,11 @@ export default function AdminDashboard() {
     const authHeader = { 'Authorization': `Bearer ${token}` };
     try {
       const [usuarios, clientes, productos, ventas, topRes] = await Promise.all([
-        fetch('http://localhost:3001/api/auth/users', { headers: authHeader }).then(r => r.json()),
-        fetch('http://localhost:3001/api/clientes', { headers: authHeader }).then(r => r.json()),
-        fetch('http://localhost:3001/api/productos', { headers: authHeader }).then(r => r.json()),
-        fetch('http://localhost:3001/api/ventas', { headers: authHeader }).then(r => r.json()),
-        fetch('http://localhost:3001/api/ventas/productos-mas-vendidos', { headers: authHeader }).then(r => r.json()),
+        fetch('/api/auth/users', { headers: authHeader }).then(r => r.json()),
+        fetch('/api/clientes', { headers: authHeader }).then(r => r.json()),
+        fetch('/api/productos', { headers: authHeader }).then(r => r.json()),
+        fetch('/api/ventas', { headers: authHeader }).then(r => r.json()),
+        fetch('/api/ventas/productos-mas-vendidos', { headers: authHeader }).then(r => r.json()),
       ]);
 
       const ventasCompletadas = Array.isArray(ventas) ? ventas.filter((v: any) => v.estado === 'completada') : [];
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-6 rounded-2xl shadow">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Ventas por Día</h3>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={ventasData}>
+            <BarChart data={ventasData.slice(-5)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="name" stroke="#6b7280" />
               <YAxis stroke="#6b7280" tickFormatter={(v: any) => `Bs ${fmt(Number(v))}`} />

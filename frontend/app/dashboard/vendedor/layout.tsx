@@ -32,30 +32,52 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
     { href: '/dashboard/vendedor/ventas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', label: 'Mis Ventas' },
   ];
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   if (loading) return null;
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside 
+      {/* Mobile menu button */}
+      <button
+        onClick={() => setMobileSidebarOpen(true)}
+        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200 md:hidden cursor-pointer"
+      >
+        <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar: desktop (static) / mobile (overlay) */}
+      <aside
         className={`
-          ${sidebarOpen ? 'w-64' : 'w-20'} 
-          bg-white text-gray-800 flex flex-col 
-          transition-all duration-300 ease-in-out
+          bg-white text-gray-800 flex flex-col
           border-r border-gray-200 shadow-lg
           overflow-hidden
+          ${sidebarOpen ? 'w-64' : 'w-20'}
+          transition-all duration-300 ease-in-out
+          hidden md:flex
         `}
       >
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)} 
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             >
               <svg className={`w-6 h-6 text-gray-600 transition-transform duration-300 ${sidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            
+
             <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
                 <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
@@ -65,7 +87,7 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
                 <p className="text-xs text-gray-500">Panel Vendedor</p>
               </div>
             </div>
-            
+
             {!sidebarOpen && (
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md mx-auto">
                 <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover rounded-xl" />
@@ -73,16 +95,17 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
             )}
           </div>
         </div>
-        
+
         <nav className="flex-1 p-2 space-y-1">
           {menuItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setMobileSidebarOpen(false)}
               className={`
                 flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
-                ${pathname === item.href 
-                  ? 'bg-gray-800 text-white shadow-lg transform scale-105' 
+                ${pathname === item.href
+                  ? 'bg-gray-800 text-white shadow-lg transform scale-105'
                   : 'text-gray-600 hover:bg-gray-200 hover:scale-105'}
                 ${!sidebarOpen ? 'justify-center' : ''}
               `}
@@ -96,7 +119,7 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
             </Link>
           ))}
         </nav>
-        
+
         <div className="p-2 border-t border-gray-200 mt-auto">
           <button
             onClick={handleLogout}
@@ -114,7 +137,75 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-8 bg-gray-100">
+
+      {/* Mobile sidebar overlay */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50
+          bg-white text-gray-800 flex flex-col
+          border-r border-gray-200 shadow-2xl
+          overflow-hidden transition-all duration-300 ease-in-out
+          md:hidden
+          ${mobileSidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full'}
+        `}
+      >
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
+                <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap">Licorería KN</h1>
+                <p className="text-xs text-gray-500">Panel Vendedor</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-2 space-y-1">
+          {menuItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileSidebarOpen(false)}
+              className={`
+                flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
+                ${pathname === item.href
+                  ? 'bg-gray-800 text-white shadow-lg transform scale-105'
+                  : 'text-gray-600 hover:bg-gray-200 hover:scale-105'}
+              `}
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+              </svg>
+              <span className="whitespace-nowrap">{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="p-2 border-t border-gray-200 mt-auto">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 w-full"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span className="whitespace-nowrap">Cerrar Sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-100 pt-16 md:pt-8">
         {children}
       </main>
     </div>

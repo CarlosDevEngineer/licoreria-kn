@@ -15,7 +15,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -56,19 +56,19 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/30"></div>
       </div>
       
-      <div className="relative flex items-center justify-center w-full">
-        <div className="bg-white rounded-3xl shadow-2xl p-16 border border-gray-200 min-w-[600px] min-h-[700px] flex flex-col justify-center">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-36 h-36 rounded-full shadow-2xl mb-6 overflow-hidden ring-4 ring-gray-300">
+      <div className="relative flex items-center justify-center w-full px-4">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-16 border border-gray-200 w-full max-w-[600px] flex flex-col justify-center">
+          <div className="text-center mb-8 md:mb-10">
+            <div className="inline-flex items-center justify-center w-28 h-28 md:w-36 md:h-36 rounded-full shadow-2xl mb-4 md:mb-6 overflow-hidden ring-4 ring-gray-300">
               <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
             </div>
-            <h1 className="text-5xl font-bold text-gray-800">
+            <h1 className="text-3xl md:text-5xl font-bold text-gray-800">
               Licorería KN
             </h1>
-            <p className="text-gray-600 mt-3 text-lg font-medium">Bienvenido al sistema</p>
+            <p className="text-gray-600 mt-2 md:mt-3 text-base md:text-lg font-medium">Bienvenido al sistema</p>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6" suppressHydrationWarning>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Usuario</label>
               <div className="relative">
@@ -84,6 +84,7 @@ export default function LoginPage() {
                   className="w-full pl-12 pr-4 py-4 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all text-lg text-gray-800"
                   placeholder="Tu nombre de usuario"
                   required
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -103,11 +104,13 @@ export default function LoginPage() {
                   className="w-full pl-12 pr-12 py-4 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all text-lg text-gray-800"
                   placeholder="••••••••"
                   required
+                  suppressHydrationWarning
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                  suppressHydrationWarning
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,6 +139,7 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               className="w-full bg-gray-800 text-white font-bold py-4 px-6 rounded-xl hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+              suppressHydrationWarning
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

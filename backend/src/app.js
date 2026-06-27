@@ -19,11 +19,15 @@ const clientesRoutes = require("./routers/clientes.routes");
 const productosRoutes = require("./routers/productos.routes");
 const proveedoresRoutes = require("./routers/proveedores.routes");
 const ventasRoutes = require("./routers/ventas.routes");
+const comprasRoutes = require("./routers/compras.routes");
+const inventarioRoutes = require("./routers/inventario.routes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/clientes", clientesRoutes);
 app.use("/api/productos", productosRoutes);
 app.use("/api/proveedores", proveedoresRoutes);
 app.use("/api/ventas", ventasRoutes);
+app.use("/api/compras", comprasRoutes);
+app.use("/api/inventario", inventarioRoutes);
 
 module.exports = app;

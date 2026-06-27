@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
+import CustomSelect from '@/app/components/CustomSelect';
 import { formatPrice } from '@/lib/format';
 
 export default function ProductosVendedorPage() {
@@ -20,18 +21,26 @@ export default function ProductosVendedorPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [page, setPage] = useState(1);
+  const [showQuickModal, setShowQuickModal] = useState(false);
+  const [quickProduct, setQuickProduct] = useState<any>(null);
+  const [quickForm, setQuickForm] = useState<{ stock_actual: number | ''; costo_unitario: number; precio_venta: number; proveedor_id: string }>({ stock_actual: 0, costo_unitario: 0, precio_venta: 0, proveedor_id: '' });
   const [errores, setErrores] = useState<any>({});
   const [proveedores, setProveedores] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [nuevaCategoria, setNuevaCategoria] = useState('');
+  const [showNuevaCategoria, setShowNuevaCategoria] = useState(false);
 
   useEffect(() => {
     fetchProductos();
     fetchProveedores();
+    fetchCategorias();
   }, []);
 
   const fetchProductos = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/productos', {
+      const res = await fetch('/api/productos', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) { setProductos([]); return; }
@@ -48,7 +57,7 @@ export default function ProductosVendedorPage() {
   const fetchProveedores = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/proveedores', {
+      const res = await fetch('/api/proveedores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) { setProveedores([]); return; }
@@ -60,7 +69,22 @@ export default function ProductosVendedorPage() {
     }
   };
 
-  const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
+  const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s'&.,\-()/]+$/;
+
+  const fetchCategorias = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/productos/categorias', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCategorias(Array.isArray(data) ? data : []);
+      }
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
 
   const formatStock = (p: any) => {
     const uds = Number(p.unidades_por_caja) || 1;
@@ -71,7 +95,7 @@ export default function ProductosVendedorPage() {
     return `${cajas} caja${cajas !== 1 ? 's' : ''}`;
   };
   const SOLO_NUMEROS = /^\d*$/;
-  const DECIMALES = /^\d+(\.\d{1,2})?$/;
+  const ENTEROS = /^\d+$/;
 
   const validarCampo = (name: any, value: any, currentForm: any) => {
     const data = currentForm || form;
@@ -88,15 +112,12 @@ export default function ProductosVendedorPage() {
     if (name === 'costo_unitario') {
       if (value === '' || value === 0) error = 'El costo es obligatorio';
       else if (value < 0) error = 'El costo no puede ser negativo';
-      else if (!DECIMALES.test(String(value))) error = 'El costo debe ser un número decimal válido';
+      else if (!ENTEROS.test(String(value))) error = 'El costo debe ser un número entero';
     }
     if (name === 'precio_venta') {
       if (value === '' || value === 0) error = 'El precio es obligatorio';
       else if (value < 0) error = 'El precio no puede ser negativo';
-      else if (!DECIMALES.test(String(value))) error = 'El precio debe ser un número decimal válido';
-    }
-    if (name === 'marca' && data.tipo_producto === 'bebida' && value && !SOLO_LETRAS.test(value)) {
-      error = 'La marca solo puede contener letras';
+      else if (!ENTEROS.test(String(value))) error = 'El precio debe ser un número entero';
     }
     if (name === 'categoria' && value && !SOLO_LETRAS.test(value)) {
       error = 'La categoría solo puede contener letras';
@@ -128,11 +149,10 @@ export default function ProductosVendedorPage() {
 
     if (form.costo_unitario === '' || form.costo_unitario === 0) errs.costo_unitario = 'El costo es obligatorio';
     else if (form.costo_unitario < 0) errs.costo_unitario = 'El costo no puede ser negativo';
-    else if (!DECIMALES.test(String(form.costo_unitario))) errs.costo_unitario = 'El costo debe ser un número decimal válido';
+    else if (!ENTEROS.test(String(form.costo_unitario))) errs.costo_unitario = 'El costo debe ser un número entero';
     if (form.precio_venta === '' || form.precio_venta === 0) errs.precio_venta = 'El precio es obligatorio';
     else if (form.precio_venta < 0) errs.precio_venta = 'El precio no puede ser negativo';
-    else if (!DECIMALES.test(String(form.precio_venta))) errs.precio_venta = 'El precio debe ser un número decimal válido';
-    if (form.marca && form.tipo_producto === 'bebida' && !SOLO_LETRAS.test(form.marca)) errs.marca = 'La marca solo puede contener letras';
+    else if (!ENTEROS.test(String(form.precio_venta))) errs.precio_venta = 'El precio debe ser un número entero';
     if (form.categoria && !SOLO_LETRAS.test(form.categoria)) errs.categoria = 'La categoría solo puede contener letras';
     if (form.presentacion_ml && !SOLO_NUMEROS.test(String(form.presentacion_ml))) errs.presentacion_ml = 'La presentación solo puede contener números';
     if (form.tipo_envase && form.tipo_producto === 'bebida' && !SOLO_LETRAS.test(form.tipo_envase)) errs.tipo_envase = 'El tipo de envase solo puede contener letras';
@@ -155,7 +175,7 @@ export default function ProductosVendedorPage() {
     };
     try {
       if (editando) {
-        const res = await fetch(`http://localhost:3001/api/productos/${editando}`, {
+        const res = await fetch(`/api/productos/${editando}`, {
           method: 'PUT',
           headers: { 
             'Content-Type': 'application/json',
@@ -169,7 +189,7 @@ export default function ProductosVendedorPage() {
           return;
         }
       } else {
-        const res = await fetch('http://localhost:3001/api/productos', {
+        const res = await fetch('/api/productos', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -213,10 +233,55 @@ export default function ProductosVendedorPage() {
     setShowConfirm(true);
   };
 
+  const handleQuickUpdate = (p: any) => {
+    setQuickProduct(p);
+    setQuickForm({
+      stock_actual: 0,
+      costo_unitario: Number(p.costo_unitario),
+      precio_venta: Number(p.precio_venta),
+      proveedor_id: p.proveedor_id ? String(p.proveedor_id) : ''
+    });
+    setShowQuickModal(true);
+  };
+
+  const submitQuickUpdate = async (e: any) => {
+    e.preventDefault();
+    if (!quickProduct) return;
+    const token = localStorage.getItem('token');
+    const p = quickProduct;
+    if (!quickForm.proveedor_id) {
+      alert('Seleccione un proveedor');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/compras`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          producto_id: p.producto_id,
+          proveedor_id: parseInt(quickForm.proveedor_id),
+          cantidad_cajas: quickForm.stock_actual === '' ? 0 : quickForm.stock_actual,
+          costo_unitario: quickForm.costo_unitario,
+          precio_venta: quickForm.precio_venta,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Error: ' + (data.error || 'Error al registrar compra'));
+        return;
+      }
+      setShowQuickModal(false);
+      setQuickProduct(null);
+      fetchProductos();
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
   const confirmDelete = async () => {
     if (itemToDelete) {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/productos/${itemToDelete}`, {
+      const res = await fetch(`/api/productos/${itemToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -255,14 +320,17 @@ export default function ProductosVendedorPage() {
            p.codigo?.toLowerCase().includes(q) ||
            p.categoria?.toLowerCase().includes(q);
   });
+  const itemsPorPagina = 10;
+  const totalPaginas = Math.ceil(productosFiltrados.length / itemsPorPagina);
+  const productosPaginados = productosFiltrados.slice((page - 1) * itemsPorPagina, page * itemsPorPagina);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div></div>;
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Productos</h1>
-        <button onClick={resetForm} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2 cursor-pointer">
+        <button onClick={resetForm} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
@@ -271,60 +339,114 @@ export default function ProductosVendedorPage() {
       </div>
 
       <div className="mb-4">
-        <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por código, nombre o categoría..." className="w-full md:w-1/2 border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" />
+        <input type="text" value={busqueda} onChange={e => { setBusqueda(e.target.value); setPage(1); }} placeholder="Buscar por código, nombre o categoría..." className="w-full md:w-1/2 border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm" />
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <div className="bg-white rounded-xl shadow">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proveedor</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock (Caja)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Código</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Nombre</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Tipo</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Categoría</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Proveedor</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Stock (Caja)</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Precio</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Estado</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {productosFiltrados.map((p, idx) => (
+            {productosPaginados.map((p, idx) => (
               <tr key={p.producto_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-800">{idx + 1}</td>
-                <td className="px-6 py-4 text-gray-800">PR-{p.producto_id}</td>
-                <td className="px-6 py-4 text-gray-800">{p.nombre}</td>
-                <td className="px-6 py-4">
+<td className="px-6 py-7 text-gray-800 text-base">{(page - 1) * itemsPorPagina + idx + 1}</td>
+                 <td className="px-6 py-7 text-gray-800 text-base">PR-{p.producto_id}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{p.nombre}</td>
+                <td className="px-6 py-7">
                   <span className="px-2 py-1 rounded-[5px] text-xs font-medium bg-blue-300 text-blue-900">
                     {p.tipo_producto}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-gray-800">{p.categoria || '-'}</td>
-                <td className="px-6 py-4 text-gray-800">{p.proveedor_nombre || '-'}</td>
-                <td className="px-6 py-4 text-gray-800">
-                  <span className={Math.floor(Number(p.stock_actual) / (Number(p.unidades_por_caja) || 1)) <= 1 ? 'text-red-600 font-bold' : ''}>
+                <td className="px-6 py-7 text-gray-800 text-base">{p.categoria || '-'}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{p.proveedor_nombre || '-'}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">
+                  <span className={Math.floor(Number(p.stock_actual) / (Number(p.unidades_por_caja) || 1)) <= 8 ? 'text-red-600 font-bold' : ''}>
                     {formatStock(p)}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-gray-800">Bs {formatPrice(p.precio_venta)}</td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-7 text-gray-800 text-base">Bs {formatPrice(p.precio_venta)}</td>
+                <td className="px-6 py-7">
                   <span className={`px-2 py-1 rounded-full text-xs ${p.activo ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'}`}>
                     {p.activo ? 'Activo' : 'Inactivo'}
                   </span>
+                </td>
+                <td className="px-6 py-7">
+                  <button onClick={() => handleQuickUpdate(p)} className="text-emerald-600 hover:text-emerald-800 cursor-pointer" title="Actualizar stock/precio">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
         {productosFiltrados.length === 0 && (
           <p className="text-center text-gray-500 py-8">No se encontraron productos</p>
+        )}
+        {totalPaginas > 1 && (
+          <div className="flex items-center justify-between px-6 py-5 border-t bg-gray-50/80">
+            <span className="text-sm text-gray-500">{(page - 1) * itemsPorPagina + 1}-{Math.min(page * itemsPorPagina, productosFiltrados.length)} de {productosFiltrados.length}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPaginas <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPaginas - 2) {
+                    pageNum = totalPaginas - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${page === pageNum ? 'bg-gray-800 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 border border-transparent'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setPage(p => Math.min(totalPaginas, p + 1))}
+                disabled={page === totalPaginas}
+                className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="bg-gray-800 p-6 sticky top-0">
               <div className="flex items-center gap-3 text-white">
                 <div className="p-3 bg-white/20 rounded-xl">
@@ -335,8 +457,8 @@ export default function ProductosVendedorPage() {
                 <h2 className="text-2xl font-bold">{editando ? 'Editar Producto' : 'Nuevo Producto'}</h2>
               </div>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-8 space-y-5">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Código</label>
                   <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-gray-500 text-sm">
@@ -355,11 +477,11 @@ export default function ProductosVendedorPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
-                <select value={form.tipo_producto} onChange={e => handleFieldChange('tipo_producto', e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white cursor-pointer">
-                  <option value="bebida">Bebida</option>
-                  <option value="snack">Snack</option>
-                  <option value="otro">Otro</option>
-                </select>
+                <CustomSelect value={form.tipo_producto} onChange={v => handleFieldChange('tipo_producto', v)} className="w-full" options={[
+                  { value: 'bebida', label: 'Bebida' },
+                  { value: 'snack', label: 'Snack' },
+                  { value: 'otro', label: 'Otro' },
+                ]} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -381,14 +503,42 @@ export default function ProductosVendedorPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Categoría</label>
-                    <input type="text" value={form.categoria} onChange={e => handleFieldChange('categoria', e.target.value)} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.categoria ? 'border-red-400' : 'border-gray-300'}`} />
+                    {showNuevaCategoria ? (
+                      <div className="flex gap-2">
+                        <input type="text" value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} placeholder="Nueva categoría" className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                        <button type="button" onClick={() => { if (nuevaCategoria.trim()) { setCategorias([...categorias, nuevaCategoria.trim()]); setForm({...form, categoria: nuevaCategoria.trim()}); setNuevaCategoria(''); setShowNuevaCategoria(false); } }} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 cursor-pointer">OK</button>
+                        <button type="button" onClick={() => { setNuevaCategoria(''); setShowNuevaCategoria(false); }} className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 cursor-pointer">X</button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 min-w-0 overflow-hidden">
+                        <CustomSelect value={form.categoria} onChange={v => handleFieldChange('categoria', v)} className="w-52 sm:w-56 shrink-0" error={errores.categoria} options={[
+                          { value: '', label: 'Seleccionar categoría' },
+                          ...[...categorias].sort((a, b) => a.localeCompare(b, 'es')).map(c => ({ value: c, label: c })),
+                        ]} />
+                        <button type="button" onClick={() => setShowNuevaCategoria(true)} className="px-3 py-2.5 md:px-4 md:py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer shrink-0 border-l border-gray-300" title="Nueva categoría"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
+                      </div>
+                    )}
                     <InputError campo="categoria" />
                   </div>
                 </div>
               ) : (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Categoría</label>
-                  <input type="text" value={form.categoria} onChange={e => handleFieldChange('categoria', e.target.value)} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.categoria ? 'border-red-400' : 'border-gray-300'}`} />
+                  {showNuevaCategoria ? (
+                    <div className="flex gap-2">
+                      <input type="text" value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} placeholder="Nueva categoría" className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                      <button type="button" onClick={() => { if (nuevaCategoria.trim()) { setCategorias([...categorias, nuevaCategoria.trim()]); setForm({...form, categoria: nuevaCategoria.trim()}); setNuevaCategoria(''); setShowNuevaCategoria(false); } }} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 cursor-pointer">OK</button>
+                      <button type="button" onClick={() => { setNuevaCategoria(''); setShowNuevaCategoria(false); }} className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 cursor-pointer">X</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 min-w-0">
+                      <CustomSelect value={form.categoria} onChange={v => handleFieldChange('categoria', v)} className="w-64 shrink-0" error={errores.categoria} options={[
+                        { value: '', label: 'Seleccionar categoría' },
+                        ...[...categorias].sort((a, b) => a.localeCompare(b, 'es')).map(c => ({ value: c, label: c })),
+                      ]} />
+                      <button type="button" onClick={() => setShowNuevaCategoria(true)} className="px-3 py-2.5 md:px-4 md:py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 cursor-pointer shrink-0 border border-gray-300" title="Nueva categoría"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
+                    </div>
+                  )}
                   <InputError campo="categoria" />
                 </div>
               )}
@@ -415,25 +565,23 @@ export default function ProductosVendedorPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Costo de compra (Bs)</label>
-                  <input type="number" step="0.01" value={form.costo_unitario} onChange={e => handleFieldChange('costo_unitario', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.costo_unitario ? 'border-red-400' : 'border-gray-300'}`} />
+                  <input type="text" inputMode="numeric" value={form.costo_unitario ? Number(form.costo_unitario).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('costo_unitario', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.costo_unitario ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="costo_unitario" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Precio de venta (Bs)</label>
-                  <input type="number" step="0.01" value={form.precio_venta} onChange={e => handleFieldChange('precio_venta', e.target.value === '' ? '' : parseFloat(e.target.value))} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.precio_venta ? 'border-red-400' : 'border-gray-300'}`} />
+                  <input type="text" inputMode="numeric" value={form.precio_venta ? Number(form.precio_venta).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('precio_venta', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.precio_venta ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="precio_venta" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Proveedor</label>
-                <select value={form.proveedor_id} onChange={e => handleFieldChange('proveedor_id', e.target.value)} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white cursor-pointer">
-                  <option value="">Sin proveedor</option>
-                  {proveedores.map(pr => (
-                    <option key={pr.proveedor_id} value={pr.proveedor_id}>{pr.nombre}</option>
-                  ))}
-                </select>
+                <CustomSelect value={form.proveedor_id} onChange={v => handleFieldChange('proveedor_id', v)} className="w-full" options={[
+                  { value: '', label: 'Sin proveedor' },
+                  ...proveedores.map(pr => ({ value: pr.proveedor_id, label: pr.nombre })),
+                ]} />
               </div>
-
+              
               <label className="flex items-center gap-3 text-gray-800 bg-gray-50 p-3 rounded-xl cursor-pointer">
                 <input type="checkbox" checked={form.activo} onChange={e => setForm({...form, activo: e.target.checked})} className="w-5 h-5 text-gray-800 rounded" />
                 <span className="font-semibold">Producto activo</span>
@@ -449,6 +597,50 @@ export default function ProductosVendedorPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showQuickModal && quickProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gray-800 p-5 rounded-t-2xl">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Compra: {quickProduct.nombre}
+              </h3>
+            </div>
+            <form onSubmit={submitQuickUpdate} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Cajas a comprar</label>
+                <input type="number" value={quickForm.stock_actual} onChange={e => setQuickForm({...quickForm, stock_actual: e.target.value === '' ? '' : parseInt(e.target.value)})} onFocus={e => e.target.select()} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" min="1" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Costo de compra (Bs)</label>
+                <input type="text" inputMode="numeric" value={quickForm.costo_unitario ? Number(quickForm.costo_unitario).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, costo_unitario: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Precio de venta (Bs)</label>
+                <input type="text" inputMode="numeric" value={quickForm.precio_venta ? Number(quickForm.precio_venta).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, precio_venta: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Proveedor</label>
+                <CustomSelect value={quickForm.proveedor_id} onChange={v => setQuickForm({...quickForm, proveedor_id: v})} className="w-full" options={[
+                  { value: '', label: 'Seleccionar proveedor' },
+                  ...proveedores.map(pr => ({ value: pr.proveedor_id, label: pr.nombre })),
+                ]} />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold cursor-pointer">
+                  Registrar Compra
+                </button>
+                <button type="button" onClick={() => { setShowQuickModal(false); setQuickProduct(null); }} className="flex-1 border-2 border-gray-300 py-3 rounded-xl hover:bg-gray-100 text-gray-700 font-semibold transition-colors cursor-pointer">
                   Cancelar
                 </button>
               </div>

@@ -12,6 +12,7 @@ export default function VendedorDashboard() {
   const [ventasData, setVentasData] = useState<any[]>([]);
   const [productosData, setProductosData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -29,11 +30,12 @@ export default function VendedorDashboard() {
       const token = localStorage.getItem('token');
       const authHeaders = { 'Authorization': `Bearer ${token}` };
       const [productos, ventas] = await Promise.all([
-        fetch('http://localhost:3001/api/productos', { headers: authHeaders }).then(r => r.json()),
-        fetch('http://localhost:3001/api/ventas', { headers: authHeaders }).then(r => r.json()),
+        fetch('/api/productos', { headers: authHeaders }).then(r => r.json()),
+        fetch('/api/ventas', { headers: authHeaders }).then(r => r.json()),
       ]);
       
-      const ventasCompletadas = Array.isArray(ventas) ? ventas.filter((v: any) => v.estado === 'completada') : [];
+      const usernameLocal = localStorage.getItem('username');
+      const ventasCompletadas = Array.isArray(ventas) ? ventas.filter((v: any) => v.estado === 'completada' && v.usuario_username === usernameLocal) : [];
       const productosActivos = Array.isArray(productos) ? productos.filter((p: any) => p.activo) : [];
       
       setStats({
@@ -53,7 +55,7 @@ export default function VendedorDashboard() {
       }
 
       if (Array.isArray(ventas) && ventas.length > 0) {
-        const misVentas = ventas.filter((v: any) => v.estado === 'completada');
+        const misVentas = ventas.filter((v: any) => v.estado === 'completada' && v.usuario_username === usernameLocal);
         const ventasPorDia: any = {};
         misVentas.forEach((v: any) => {
           const fecha = new Date(v.fecha_venta || v.fecha);
@@ -82,6 +84,10 @@ export default function VendedorDashboard() {
     { title: 'Productos', value: stats.productos, description: 'Ver productos disponibles', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', href: '/dashboard/vendedor/productos', bg: 'bg-gray-600' },
     { title: 'Mis Ventas', value: stats.ventas, description: 'Ver historial de ventas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', href: '/dashboard/vendedor/ventas', bg: 'bg-gray-500' },
   ];
+
+  const itemsPorPagina = 10;
+  const totalPaginas = Math.ceil(productosData.length / itemsPorPagina);
+  const productosPaginados = productosData.slice((page - 1) * itemsPorPagina, page * itemsPorPagina);
 
   if (loading) {
     return (
@@ -133,22 +139,68 @@ export default function VendedorDashboard() {
         <div className="bg-white p-6 rounded-2xl shadow">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Stock Disponible</h3>
           {productosData.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-3 py-2 text-left">Producto</th>
-                  <th className="px-3 py-2 text-right">Stock (Caja)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {productosData.map((p, i) => (
-                  <tr key={i}>
-                    <td className="px-3 py-2">{p.name}</td>
-                    <td className={`px-3 py-2 text-right ${p.stock <= 1 ? 'text-red-600 font-bold' : 'text-green-600'}`}>{p.stock}</td>
+            <>
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Producto</th>
+                    <th className="px-3 py-2 text-right">Stock (Caja)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y">
+                  {productosPaginados.map((p, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2">{p.name}</td>
+                      <td className={`px-3 py-2 text-right ${p.stock <= 1 ? 'text-red-600 font-bold' : 'text-green-600'}`}>{p.stock}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {totalPaginas > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/80">
+                  <span className="text-sm text-gray-500">{(page - 1) * itemsPorPagina + 1}-{Math.min(page * itemsPorPagina, productosData.length)} de {productosData.length}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPaginas <= 5) {
+                          pageNum = i + 1;
+                        } else if (page <= 3) {
+                          pageNum = i + 1;
+                        } else if (page >= totalPaginas - 2) {
+                          pageNum = totalPaginas - 4 + i;
+                        } else {
+                          pageNum = page - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setPage(pageNum)}
+                            className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${page === pageNum ? 'bg-gray-800 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 border border-transparent'}`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPaginas, p + 1))}
+                      disabled={page === totalPaginas}
+                      className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="h-64 flex items-center justify-center text-gray-400">
               No hay productos registrados

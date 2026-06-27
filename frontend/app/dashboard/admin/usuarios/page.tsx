@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
+import CustomSelect from '@/app/components/CustomSelect';
 
 const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/;
 const SIN_ESPECIALES = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9._-]*$/;
@@ -17,6 +18,7 @@ export default function UsuariosPage() {
   const [backendError, setBackendError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchUsuarios();
@@ -25,7 +27,7 @@ export default function UsuariosPage() {
   const fetchUsuarios = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/auth/users', {
+      const res = await fetch('/api/auth/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -71,7 +73,7 @@ export default function UsuariosPage() {
       if (editando) {
         const bodyData: any = { nombre: form.nombre, username: form.username, rol: form.rol };
         if (form.password) bodyData.password = form.password;
-        res = await fetch(`http://localhost:3001/api/auth/users/${editando}`, {
+        res = await fetch(`/api/auth/users/${editando}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -80,7 +82,7 @@ export default function UsuariosPage() {
           body: JSON.stringify(bodyData),
         });
       } else {
-        res = await fetch('http://localhost:3001/api/auth/register', {
+        res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -129,7 +131,7 @@ export default function UsuariosPage() {
   const confirmDelete = async () => {
     if (itemToDelete) {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/auth/users/${itemToDelete}`, {
+      const res = await fetch(`/api/auth/users/${itemToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -146,13 +148,17 @@ export default function UsuariosPage() {
     setItemToDelete(null);
   };
 
+  const itemsPorPagina = 10;
+  const totalPaginas = Math.ceil(usuarios.length / itemsPorPagina);
+  const dataPaginada = usuarios.slice((page - 1) * itemsPorPagina, page * itemsPorPagina);
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div></div>;
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Usuarios</h1>
-        <button onClick={abrirNuevo} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2 cursor-pointer">
+        <button onClick={abrirNuevo} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
@@ -160,36 +166,37 @@ export default function UsuariosPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <div className="bg-white rounded-xl shadow">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Nombre</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Usuario</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Rol</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {usuarios.map((u, idx) => (
+            {dataPaginada.map((u, idx) => (
               <tr key={u.usuario_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-800">{idx + 1}</td>
-                <td className="px-6 py-4 text-gray-800">{u.nombre}</td>
-                <td className="px-6 py-4 text-gray-800">{u.username}</td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-7 text-gray-800 text-base">{idx + 1}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{u.nombre}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{u.username}</td>
+                <td className="px-6 py-7">
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${u.rol === 'admin' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-800'}`}>
                     {u.rol === 'admin' ? 'Admin' : 'Vendedor'}
                   </span>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-7">
                   <div className="flex gap-3">
-                    <button onClick={() => handleEdit(u)} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors cursor-pointer">
+                    <button onClick={() => handleEdit(u)} className="text-blue-600 hover:text-blue-800 cursor-pointer">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button onClick={() => handleDelete(u.usuario_id)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors cursor-pointer">
+                    <button onClick={() => handleDelete(u.usuario_id)} className="text-red-600 hover:text-red-800 cursor-pointer">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
@@ -200,10 +207,55 @@ export default function UsuariosPage() {
             ))}
           </tbody>
         </table>
+        </div>
+        {totalPaginas > 1 && (
+          <div className="flex items-center justify-between px-6 py-5 border-t bg-gray-50/80">
+            <span className="text-sm text-gray-500">{(page - 1) * itemsPorPagina + 1}-{Math.min(page * itemsPorPagina, usuarios.length)} de {usuarios.length}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPaginas <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPaginas - 2) {
+                    pageNum = totalPaginas - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${page === pageNum ? 'bg-gray-800 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 border border-transparent'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setPage(p => Math.min(totalPaginas, p + 1))}
+                disabled={page === totalPaginas}
+                className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gray-800 p-6">
               <div className="flex items-center gap-3 text-white">
@@ -237,10 +289,10 @@ export default function UsuariosPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Rol</label>
-                <select name="rol" value={form.rol} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white cursor-pointer">
-                  <option value="vendedor">Vendedor</option>
-                  <option value="admin">Admin</option>
-                </select>
+                <CustomSelect value={form.rol} onChange={v => handleChange({ target: { name: 'rol', value: v } } as any)} className="w-full" options={[
+                  { value: 'vendedor', label: 'Vendedor' },
+                  { value: 'admin', label: 'Admin' },
+                ]} />
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2 cursor-pointer">

@@ -119,6 +119,14 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
+    await pool.query("UPDATE inventario_movimientos SET usuario_id = NULL WHERE usuario_id = $1", [id]);
+    await pool.query("UPDATE clientes SET usuario_creacion_id = NULL WHERE usuario_creacion_id = $1", [id]);
+    await pool.query("UPDATE compras SET usuario_creacion_id = NULL WHERE usuario_creacion_id = $1", [id]);
+    await pool.query("UPDATE productos SET usuario_creacion_id = NULL WHERE usuario_creacion_id = $1", [id]);
+    await pool.query("UPDATE productos SET usuario_modificacion_id = NULL WHERE usuario_modificacion_id = $1", [id]);
+    await pool.query("UPDATE proveedores SET usuario_creacion_id = NULL WHERE usuario_creacion_id = $1", [id]);
+    await pool.query("UPDATE ventas SET usuario_creacion_id = NULL WHERE usuario_creacion_id = $1", [id]);
+    await pool.query("UPDATE usuarios SET usuario_modificacion_id = NULL WHERE usuario_modificacion_id = $1", [id]);
     await pool.query("DELETE FROM usuarios WHERE usuario_id = $1", [id]);
     res.json({ message: "Usuario eliminado" });
   } catch (error) {

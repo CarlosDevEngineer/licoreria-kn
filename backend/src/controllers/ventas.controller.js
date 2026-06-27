@@ -4,7 +4,7 @@ const { verificarStockBajo } = require("../services/mail.service");
 const getVentas = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.*, c.nombre as cliente_nombre, u.nombre as usuario_nombre 
+      SELECT v.*, c.nombre as cliente_nombre, u.nombre as usuario_nombre, u.username as usuario_username
       FROM ventas v 
       LEFT JOIN clientes c ON v.cliente_id = c.cliente_id 
       LEFT JOIN usuarios u ON v.usuario_creacion_id = u.usuario_id
@@ -19,7 +19,12 @@ const getVentas = async (req, res) => {
 const getVentaDetalle = async (req, res) => {
   const { id } = req.params;
   try {
-    const venta = await pool.query("SELECT * FROM ventas WHERE venta_id = $1", [id]);
+    const venta = await pool.query(`
+      SELECT v.*, c.nombre as cliente_nombre
+      FROM ventas v
+      LEFT JOIN clientes c ON v.cliente_id = c.cliente_id
+      WHERE v.venta_id = $1
+    `, [id]);
     const detalle = await pool.query(`
       SELECT vd.*, p.nombre as producto_nombre, p.codigo as producto_codigo
       FROM ventas_detalle vd
@@ -44,14 +49,14 @@ const createVenta = async (req, res) => {
       `INSERT INTO ventas (cliente_id, subtotal, descuento, total, estado, metodo_pago, observaciones, usuario_creacion_id, numero_factura)
        VALUES ($1, $2, $3, $4, 'completada', $5, $6, $7, (SELECT COALESCE(MAX(venta_id), 0) + 1 FROM ventas))
        RETURNING *`,
-      [cliente_id, total, descuento || 0, total, metodo_pago, observaciones, usuario_creacion_id]
+      [cliente_id || null, total, descuento || 0, total, metodo_pago, observaciones, usuario_creacion_id]
     );
     
     const venta_id = ventaResult.rows[0].venta_id;
     
     for (const prod of productos) {
       const prodData = await client.query(
-        `SELECT stock_actual, unidades_por_caja, nombre, categoria FROM productos WHERE producto_id = $1`,
+        `SELECT stock_actual, costo_unitario, unidades_por_caja, nombre, categoria FROM productos WHERE producto_id = $1`,
         [prod.producto_id]
       );
       const p = prodData.rows[0];
@@ -71,6 +76,18 @@ const createVenta = async (req, res) => {
         `INSERT INTO ventas_detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal, tipo_venta)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [venta_id, prod.producto_id, prod.cantidad, prod.precio_unitario, prod.subtotal, prod.tipo_venta || 'unidad']
+      );
+
+      const nuevoStock = totalUnd - descontarUnd;
+      await client.query(
+        `UPDATE productos SET stock_actual = $1 WHERE producto_id = $2`,
+        [nuevoStock, prod.producto_id]
+      );
+
+      await client.query(
+        `INSERT INTO inventario_movimientos (producto_id, tipo_movimiento, cantidad, saldo_anterior, saldo_posterior, referencia_id, referencia_tipo, observaciones, usuario_id)
+         VALUES ($1, 'venta', $2, $3, $4, $5, 'venta', $6, $7)`,
+        [prod.producto_id, -descontarUnd, totalUnd, nuevoStock, venta_id, `Venta #${venta_id}`, usuario_creacion_id]
       );
     }
     
