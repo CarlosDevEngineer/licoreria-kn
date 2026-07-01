@@ -1,4 +1,4 @@
-# Licoreria-KN 🍻
+# Licoreria-KN 
 Sistema de inventario
 
 Comando para efecutar
