@@ -30,7 +30,7 @@ services:
       SMTP_PORT: 587
       SMTP_SECURE: "false"
       SMTP_USER: mf849040@gmail.com
-      SMTP_PASS: "srfm rdnr ftkm sywr"
+      SMTP_PASS: "txby gsay vsna nnud"
     depends_on:
       db:
         condition: service_healthy

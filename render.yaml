@@ -25,7 +25,7 @@ services:
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
-        sync: false
+        value: "txby gsay vsna nnud"
 
 databases:
   - name: licoreria-kn-db
