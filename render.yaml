@@ -31,4 +31,3 @@ databases:
   - name: licoreria-kn-db
     plan: free
     databaseName: licoreria_kn
-    user: postgres
