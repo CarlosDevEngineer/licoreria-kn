@@ -22,14 +22,14 @@ const enviarAlertaStockBajo = async (producto, proveedorEmail, proveedorNombre) 
   const stockStr = undSueltas > 0 ? `${cajas} caja(s) + ${undSueltas} und` : `${cajas} caja(s)`;
 
   const mailOptions = {
-    from: `"Licorería KN" <${process.env.SMTP_USER}>`,
+    from: `" Drew Grand Reserve" <${process.env.SMTP_USER}>`,
     to: proveedorEmail,
     subject: `🔴 ALERTA: Stock bajo - ${producto.nombre}`,
     html: `
       <div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;">
         <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:30px 40px;border-radius:12px 12px 0 0;text-align:center;">
           <div style="font-size:40px;margin-bottom:8px;">🍾</div>
-          <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;">Licorería KN</h1>
+          <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;"> Drew Grand Reserve</h1>
           <p style="color:#a0aec0;margin:4px 0 0;font-size:13px;">Sistema de Gestión de Inventario</p>
         </div>
 
@@ -63,7 +63,7 @@ const enviarAlertaStockBajo = async (producto, proveedorEmail, proveedorNombre) 
         <p style="color:#555;font-size:14px;line-height:1.6;">Por favor, realice el pedido de reposici&oacute;n a la brevedad posible para evitar desabastecimiento.</p>
 
         <div style="border-top:2px solid #e5e7eb;margin-top:30px;padding-top:20px;text-align:center;">
-          <p style="color:#9ca3af;font-size:12px;margin:0;">Licorería KN &bull; Sistema de Gesti&oacute;n de Inventario</p>
+          <p style="color:#9ca3af;font-size:12px;margin:0;"> Drew Grand Reserve &bull; Sistema de Gesti&oacute;n de Inventario</p>
           <p style="color:#9ca3af;font-size:11px;margin:4px 0 0;">Este es un mensaje autom&aacute;tico. No responda a este correo.</p>
         </div>
       </div>

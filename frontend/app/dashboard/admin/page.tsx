@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 
-const fmt = (n: number) => n.toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const fmt = (n: number) => Math.round(n).toLocaleString('es');
 
 export default function AdminDashboard() {
   const router = useRouter();

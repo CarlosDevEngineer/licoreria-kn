@@ -58,7 +58,7 @@ const getComprasProducto = async (req, res) => {
 };
 
 const createCompra = async (req, res) => {
-  const { producto_id, proveedor_id, cantidad_cajas, costo_unitario, precio_venta } = req.body;
+  const { producto_id, proveedor_id, cantidad_cajas, costo_unitario, precio_venta, precio_botella } = req.body;
   const usuario_creacion_id = req.user?.id;
 
   const client = await pool.connect();
@@ -92,8 +92,8 @@ const createCompra = async (req, res) => {
 
     const nuevoStock = Number(p.stock_actual) + cajas * uds;
     await client.query(
-      `UPDATE productos SET stock_actual = $1, costo_unitario = $2, precio_venta = $3 WHERE producto_id = $4`,
-      [nuevoStock, costo, precio_venta, producto_id]
+      `UPDATE productos SET stock_actual = $1, costo_unitario = $2, precio_venta = $3, precio_botella = $4 WHERE producto_id = $5`,
+      [nuevoStock, costo, precio_venta, precio_botella || null, producto_id]
     );
 
     await client.query(

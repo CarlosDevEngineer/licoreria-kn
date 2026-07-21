@@ -24,8 +24,13 @@ export default function NuevaVentaPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [busquedaProducto, setBusquedaProducto] = useState('');
+  const [pageProducto, setPageProducto] = useState(1);
+  const itemsPorPagina = 9;
   const [clienteErrors, setClienteErrors] = useState<any>({});
   const [clienteBackendError, setClienteBackendError] = useState('');
+  const [seleccionandoId, setSeleccionandoId] = useState<number | null>(null);
+  const [editQtyId, setEditQtyId] = useState<number | null>(null);
+  const [editQtyVal, setEditQtyVal] = useState('');
   const [showRecibo, setShowRecibo] = useState(false);
   const [reciboData, setReciboData] = useState<any>(null);
   const [montoRecibido, setMontoRecibido] = useState('');
@@ -86,6 +91,8 @@ export default function NuevaVentaPage() {
   };
 
   const agregarProducto = (producto: any) => {
+    setSeleccionandoId(producto.producto_id);
+    setTimeout(() => setSeleccionandoId(null), 300);
     const existente = carrito.find(p => p.producto_id === producto.producto_id);
     const udsPorCaja = Number(producto.unidades_por_caja) || 1;
 
@@ -100,15 +107,17 @@ export default function NuevaVentaPage() {
         } : p));
       }
     } else {
-      const esSnack = producto.tipo_producto === 'snack';
-      const pUnitario = esSnack ? Number(producto.precio_venta) / udsPorCaja : Number(producto.precio_venta);
+      const tipoVenta = 'unidad';
+      const pUnitario = Number(producto.precio_botella) || Number(producto.precio_venta) / udsPorCaja;
       setCarrito([...carrito, {
         producto_id: producto.producto_id, nombre: producto.nombre, cantidad: 1,
         precio_unitario: pUnitario, subtotal: pUnitario,
         stock_actual: Number(producto.stock_actual), tipo_producto: producto.tipo_producto,
         marca: producto.marca, presentacion_ml: producto.presentacion_ml,
         tipo_envase: producto.tipo_envase, unidades_por_caja: udsPorCaja,
-        tipo_venta: esSnack ? 'unidad' : 'caja'
+        precio_venta: Number(producto.precio_venta),
+        precio_botella: Number(producto.precio_botella) || 0,
+        tipo_venta: tipoVenta
       }]);
     }
   };
@@ -123,7 +132,8 @@ export default function NuevaVentaPage() {
       const undActualesItem = p.tipo_venta === 'caja' ? p.cantidad * uds : p.cantidad;
       const restante = stockOriginal - (undEnCarrito - undActualesItem);
       const precioBase = Number(productos.find(pr => pr.producto_id === producto_id)?.precio_venta) || 0;
-      const nuevoPrecio = nuevoTipo === 'caja' ? precioBase : precioBase / uds;
+      const precioBott = Number(productos.find(pr => pr.producto_id === producto_id)?.precio_botella) || 0;
+      const nuevoPrecio = nuevoTipo === 'caja' ? precioBase : (precioBott || precioBase / uds);
       const maxUnd = nuevoTipo === 'caja' ? Math.floor(restante / uds) : restante;
       const nuevaCant = Math.min(p.cantidad, maxUnd || 1);
       return {
@@ -137,23 +147,22 @@ export default function NuevaVentaPage() {
   };
 
   const actualizarCantidad = (producto_id: any, cantidad: any) => {
-    if (cantidad <= 0) {
-      setCarrito(carrito.filter(p => p.producto_id !== producto_id));
-    } else {
-      const item = carrito.find(p => p.producto_id === producto_id);
-      if (!item) return;
+    setCarrito(prev => {
+      if (cantidad <= 0) return prev.filter((p: any) => p.producto_id !== producto_id);
+      const item = prev.find((p: any) => p.producto_id === producto_id);
+      if (!item) return prev;
       const uds = item.unidades_por_caja || 1;
       const stockOriginal = Math.round(item.stock_actual);
-      const undEnCarrito = getUndEnCarrito(producto_id);
+      let totalUnd = 0;
+      prev.forEach((it: any) => { if (it.producto_id === producto_id) { totalUnd += it.tipo_venta === 'caja' ? it.cantidad * (it.unidades_por_caja || 1) : it.cantidad; } });
       const undActualesItem = item.tipo_venta === 'caja' ? item.cantidad * uds : item.cantidad;
-      const restante = stockOriginal - (undEnCarrito - undActualesItem);
+      const restante = stockOriginal - (totalUnd - undActualesItem);
       const maxQty = item.tipo_venta === 'caja' ? Math.floor(restante / uds) : restante;
       if (cantidad <= maxQty) {
-        setCarrito(carrito.map(p => p.producto_id === producto_id ? {
-          ...p, cantidad, subtotal: Number((cantidad * p.precio_unitario).toFixed(2))
-        } : p));
+        return prev.map((p: any) => p.producto_id === producto_id ? { ...p, cantidad, subtotal: Number((cantidad * p.precio_unitario).toFixed(2)) } : p);
       }
-    }
+      return prev;
+    });
   };
 
   const eliminarProducto = (producto_id: any) => {
@@ -162,17 +171,21 @@ export default function NuevaVentaPage() {
 
   const total = carrito.reduce((sum, p) => sum + Number(p.subtotal), 0);
 
+  const productosFiltrados = productos.filter(p => (filtroTipo === 'todos' || p.tipo_producto === filtroTipo) && (!busquedaProducto || p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())));
+  const totalPaginasProd = Math.ceil(productosFiltrados.length / itemsPorPagina);
+  const productosPagina = productosFiltrados.slice((pageProducto - 1) * itemsPorPagina, pageProducto * itemsPorPagina);
+
   const imprimirRecibo = () => {
     const w = window.open('', '_blank');
     if (!w || !reciboData) return;
-    let html = '<html><head><title>Recibo</title><style>body{font-family:monospace;padding:20px;font-size:14px}table{width:100%;border-collapse:collapse}th,td{padding:6px 4px;text-align:left}th{border-bottom:2px solid #000}td{border-bottom:1px solid #ccc}.total{font-weight:bold;font-size:16px;margin-top:10px}.text-right{text-align:right}</style></head><body>';
+    let html = '<html><head><title>Recibo</title><style>body{font-family:monospace;padding:20px;font-size:14px}table{width:100%;border-collapse:collapse}th,td{padding:6px 4px;text-align:left}th{border-bottom:2px solid #000}td{border-bottom:1px solid #ccc}.total{font-weight:bold;font-size:16px;margin-top:10px}.text-right{text-align:center}</style></head><body>';
     html += '<h2 style="text-align:center">Licorer&iacute;a KN</h2><h3 style="text-align:center">RECIBO DE VENTA</h3>';
     html += '<p><strong>Factura:</strong> #' + (reciboData.venta?.numero_factura || reciboData.venta?.venta_id) + '</p>';
     html += '<p><strong>Fecha:</strong> ' + new Date(reciboData.venta?.fecha_venta).toLocaleDateString('es-ES') + '</p>';
     html += '<p><strong>Cliente:</strong> ' + reciboData.cliente_nombre + '</p>';
     html += '<table><thead><tr><th>Producto</th><th class="text-right">Cant</th><th class="text-right">P.Unit</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
     (reciboData.detalle || []).forEach(function(d: any) {
-      html += '<tr><td>' + d.producto_nombre + '</td><td class="text-right">' + d.cantidad + ' ' + (d.tipo_venta === 'caja' ? 'caja' : 'und') + '</td><td class="text-right">Bs ' + d.precio_unitario + '</td><td class="text-right">Bs ' + formatPrice(d.subtotal) + '</td></tr>';
+      html += '<tr><td>' + d.producto_nombre + '</td><td class="text-right">' + d.cantidad + ' ' + (d.tipo_venta === 'caja' ? 'caja' : 'und') + '</td><td class="text-right">Bs ' + formatPrice(d.precio_unitario) + '</td><td class="text-right">Bs ' + formatPrice(d.subtotal) + '</td></tr>';
     });
     html += '</tbody></table>';
     html += '<div class="total"><p><strong>Total: Bs ' + formatPrice(reciboData.venta?.total || total) + '</strong></p></div>';
@@ -320,18 +333,18 @@ export default function NuevaVentaPage() {
             <div className="bg-white rounded-xl shadow p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Productos</h2>
               <div className="mb-4 flex flex-wrap gap-2">
-                <button onClick={() => setFiltroTipo('todos')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'todos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Todos</button>
-                <button onClick={() => setFiltroTipo('bebida')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'bebida' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Bebidas</button>
-                <button onClick={() => setFiltroTipo('snack')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'snack' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Snacks</button>
-                <button onClick={() => setFiltroTipo('otro')} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'otro' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Otros</button>
-                <input type="text" value={busquedaProducto} onChange={e => setBusquedaProducto(e.target.value)} placeholder="Buscar producto..." className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-gray-800 sm:ml-auto" />
+                <button onClick={() => { setFiltroTipo('todos'); setPageProducto(1); }} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'todos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Todos</button>
+                <button onClick={() => { setFiltroTipo('bebida'); setPageProducto(1); }} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'bebida' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Bebidas</button>
+                <button onClick={() => { setFiltroTipo('snack'); setPageProducto(1); }} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'snack' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Snacks</button>
+                <button onClick={() => { setFiltroTipo('otro'); setPageProducto(1); }} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${filtroTipo === 'otro' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Otros</button>
+                <input type="text" value={busquedaProducto} onChange={e => { setBusquedaProducto(e.target.value); setPageProducto(1); }} placeholder="Buscar producto..." className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-gray-800 sm:ml-auto" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {productos.filter(p => (filtroTipo === 'todos' || p.tipo_producto === filtroTipo) && (!busquedaProducto || p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase()))).map(p => {
+                {productosPagina.map(p => {
                   const stockOriginal = Math.round(Number(p.stock_actual));
                   const info = getCajasYNovedades(stockOriginal, Number(p.unidades_por_caja) || 1);
                   return (
-                    <div key={p.producto_id} onClick={() => agregarProducto(p)} className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors">
+                    <div key={p.producto_id} onClick={() => agregarProducto(p)} className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${seleccionandoId === p.producto_id ? 'border-green-500 bg-green-100 scale-95 shadow-lg shadow-green-200' : 'border-gray-200 hover:border-green-500 hover:bg-green-50'}`}>
                       <div className="flex items-center gap-1 mb-2">
                         <span className={`px-3 py-0.5 rounded-[5px] text-sm font-medium ${p.tipo_producto === 'bebida' ? 'bg-blue-300 text-blue-900' : 'bg-orange-300 text-orange-900'}`}>
                           {p.tipo_producto}
@@ -341,7 +354,10 @@ export default function NuevaVentaPage() {
                       <p className="text-sm text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
                       <p className="text-sm text-gray-500">{p.tipo_envase ? `Envase: ${p.tipo_envase}` : ''}</p>
                       <div className="flex justify-between items-center mt-3">
-                        <p className="text-green-600 font-bold text-base">Bs {formatPrice(p.precio_venta)}</p>
+                        <div>
+                          <p className="text-green-600 font-bold text-sm">Bs {formatPrice(p.precio_venta)} <span className="text-xs font-normal text-gray-500">/caja</span></p>
+                          {p.precio_botella ? <p className="text-green-600 font-bold text-sm">Bs {formatPrice(p.precio_botella)} <span className="text-xs font-normal text-gray-500">/botella</span></p> : null}
+                        </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-500">Stock: {formatStockFromUnd(stockOriginal, Number(p.unidades_por_caja) || 1)}</p>
                           <p className="text-xs text-gray-400">{p.unidades_por_caja} und/caja &rarr; {info.totalUnd} und</p>
@@ -351,6 +367,31 @@ export default function NuevaVentaPage() {
                   );
                 })}
               </div>
+              {totalPaginasProd > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
+                  <span className="text-sm text-gray-500">{(pageProducto - 1) * itemsPorPagina + 1}-{Math.min(pageProducto * itemsPorPagina, productosFiltrados.length)} de {productosFiltrados.length}</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setPageProducto(p => Math.max(1, p - 1))} disabled={pageProducto === 1} className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    {Array.from({ length: Math.min(totalPaginasProd, 5) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPaginasProd <= 5) { pageNum = i + 1; }
+                      else if (pageProducto <= 3) { pageNum = i + 1; }
+                      else if (pageProducto >= totalPaginasProd - 2) { pageNum = totalPaginasProd - 4 + i; }
+                      else { pageNum = pageProducto - 2 + i; }
+                      return (
+                        <button key={pageNum} onClick={() => setPageProducto(pageNum)} className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${pageProducto === pageNum ? 'bg-gray-800 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 border border-transparent'}`}>
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button onClick={() => setPageProducto(p => Math.min(totalPaginasProd, p + 1))} disabled={pageProducto === totalPaginasProd} className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -394,7 +435,7 @@ export default function NuevaVentaPage() {
                   <p className="text-sm">Sin productos en el carrito</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-1">
                   {carrito.map(p => {
                     const uds = p.unidades_por_caja || 1;
                     const totalUnd = Math.round(p.stock_actual);
@@ -405,8 +446,8 @@ export default function NuevaVentaPage() {
                     const cajasRest = restante >= 0 ? Math.floor(restante / uds) : 0;
                     const undRest = restante >= 0 ? restante % uds : 0;
                     return (
-                      <div key={p.producto_id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
-                        <div className="flex items-start gap-3">
+                      <div key={p.producto_id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors ">
+                         <div className="flex items-stretch gap-3 w-auto">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <p className="font-semibold text-base text-gray-800 truncate">{p.nombre}</p>
@@ -429,23 +470,24 @@ export default function NuevaVentaPage() {
                               <span className="text-gray-500">Queda:</span> <span className="font-medium text-gray-600">{cajasRest} cajas | {undRest} und</span>
                             </p>
                             {p.tipo_producto !== 'snack' && (
-                              <button onClick={() => toggleTipoVenta(p.producto_id)} className="text-sm text-blue-600 hover:text-blue-800 mt-1.5 font-medium cursor-pointer">
-                                {p.tipo_venta === 'caja' ? '↻ Vender por unidad' : '↻ Vender por caja'}
+                              <button onClick={() => toggleTipoVenta(p.producto_id)} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                <svg className={`w-3.5 h-3.5 transition-transform duration-500 ${p.tipo_venta === 'unidad' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                {p.tipo_venta === 'caja' ? 'Vender por unidad' : 'Vender por caja'}
                               </button>
                             )}
                           </div>
-                          <div className="flex flex-col items-center gap-2">
+                          <div className="flex flex-col items-stretch gap-2 shrink-0">
+                              <div className="text-center self-center !w-auto">
+                              <p className="font-bold text-green-600 text-xl">Bs {formatPrice(p.subtotal)}</p>
+                              <button onClick={() => eliminarProducto(p.producto_id)} className="mt-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition-colors font-medium border border-red-200 cursor-pointer">
+                                Eliminar
+                              </button>
+                            </div>
                             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                               <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad - 1)} className="w-8 h-8 bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold text-lg flex items-center justify-center transition-colors cursor-pointer">-</button>
                               <span className="w-10 text-center font-semibold text-gray-800 text-sm border-x border-gray-200 h-8 flex items-center justify-center">{p.cantidad}</span>
                               <button onClick={() => actualizarCantidad(p.producto_id, p.cantidad + 1)} className="w-8 h-8 bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold text-lg flex items-center justify-center transition-colors cursor-pointer">+</button>
                             </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-bold text-green-600 text-base">Bs {formatPrice(p.subtotal)}</p>
-                            <button onClick={() => eliminarProducto(p.producto_id)} className="mt-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition-colors font-medium border border-red-200 cursor-pointer">
-                              Eliminar
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -581,7 +623,7 @@ export default function NuevaVentaPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="bg-gray-800 p-6 text-center text-white">
               <h2 className="text-2xl font-bold">RECIBO DE VENTA</h2>
-              <p className="text-sm opacity-80">Licorería KN</p>
+              <p className="text-sm opacity-80"> Drew Grand Reserve</p>
             </div>
             <div className="p-6" id="recibo-contenido">
               <div className="text-sm text-gray-600 border-b pb-3 mb-4">

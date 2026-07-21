@@ -14,7 +14,7 @@ export default function ProductosVendedorPage() {
   const [form, setForm] = useState<any>({
     nombre: '', descripcion: '', tipo_producto: 'bebida',
     stock_actual: 0,
-    costo_unitario: 0, precio_venta: 0, activo: true,
+    costo_unitario: 0, precio_venta: 0, precio_botella: 0, activo: true,
     categoria: '', marca: '', presentacion_ml: '', tipo_envase: '', unidades_por_caja: '',
     proveedor_id: ''
   });
@@ -24,7 +24,7 @@ export default function ProductosVendedorPage() {
   const [page, setPage] = useState(1);
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [quickProduct, setQuickProduct] = useState<any>(null);
-  const [quickForm, setQuickForm] = useState<{ stock_actual: number | ''; costo_unitario: number; precio_venta: number; proveedor_id: string }>({ stock_actual: 0, costo_unitario: 0, precio_venta: 0, proveedor_id: '' });
+  const [quickForm, setQuickForm] = useState<{ stock_actual: number | ''; costo_unitario: number; precio_venta: number; precio_botella: number; proveedor_id: string }>({ stock_actual: 0, costo_unitario: 0, precio_venta: 0, precio_botella: 0, proveedor_id: '' });
   const [errores, setErrores] = useState<any>({});
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
@@ -96,6 +96,7 @@ export default function ProductosVendedorPage() {
   };
   const SOLO_NUMEROS = /^\d*$/;
   const ENTEROS = /^\d+$/;
+  const DECIMALES = /^\d+(\.\d{0,2})?$/;
 
   const validarCampo = (name: any, value: any, currentForm: any) => {
     const data = currentForm || form;
@@ -112,12 +113,16 @@ export default function ProductosVendedorPage() {
     if (name === 'costo_unitario') {
       if (value === '' || value === 0) error = 'El costo es obligatorio';
       else if (value < 0) error = 'El costo no puede ser negativo';
-      else if (!ENTEROS.test(String(value))) error = 'El costo debe ser un número entero';
+      else if (!DECIMALES.test(String(value))) error = 'El costo debe ser un número válido';
     }
     if (name === 'precio_venta') {
       if (value === '' || value === 0) error = 'El precio es obligatorio';
       else if (value < 0) error = 'El precio no puede ser negativo';
-      else if (!ENTEROS.test(String(value))) error = 'El precio debe ser un número entero';
+      else if (!DECIMALES.test(String(value))) error = 'El precio debe ser un número válido';
+    }
+    if (name === 'precio_botella') {
+      if (value && value < 0) error = 'El precio por botella no puede ser negativo';
+      else if (value && !DECIMALES.test(String(value))) error = 'El precio por botella debe ser un número válido';
     }
     if (name === 'categoria' && value && !SOLO_LETRAS.test(value)) {
       error = 'La categoría solo puede contener letras';
@@ -149,10 +154,12 @@ export default function ProductosVendedorPage() {
 
     if (form.costo_unitario === '' || form.costo_unitario === 0) errs.costo_unitario = 'El costo es obligatorio';
     else if (form.costo_unitario < 0) errs.costo_unitario = 'El costo no puede ser negativo';
-    else if (!ENTEROS.test(String(form.costo_unitario))) errs.costo_unitario = 'El costo debe ser un número entero';
+    else if (!DECIMALES.test(String(form.costo_unitario))) errs.costo_unitario = 'El costo debe ser un número válido';
     if (form.precio_venta === '' || form.precio_venta === 0) errs.precio_venta = 'El precio es obligatorio';
     else if (form.precio_venta < 0) errs.precio_venta = 'El precio no puede ser negativo';
-    else if (!ENTEROS.test(String(form.precio_venta))) errs.precio_venta = 'El precio debe ser un número entero';
+    else if (!DECIMALES.test(String(form.precio_venta))) errs.precio_venta = 'El precio debe ser un número válido';
+    if (form.precio_botella && form.precio_botella < 0) errs.precio_botella = 'El precio por botella no puede ser negativo';
+    else if (form.precio_botella && !DECIMALES.test(String(form.precio_botella))) errs.precio_botella = 'El precio por botella debe ser un número válido';
     if (form.categoria && !SOLO_LETRAS.test(form.categoria)) errs.categoria = 'La categoría solo puede contener letras';
     if (form.presentacion_ml && !SOLO_NUMEROS.test(String(form.presentacion_ml))) errs.presentacion_ml = 'La presentación solo puede contener números';
     if (form.tipo_envase && form.tipo_producto === 'bebida' && !SOLO_LETRAS.test(form.tipo_envase)) errs.tipo_envase = 'El tipo de envase solo puede contener letras';
@@ -205,7 +212,7 @@ export default function ProductosVendedorPage() {
       }
       setShowModal(false);
       setEditando(null);
-      setForm({ nombre: '', descripcion: '', tipo_producto: 'bebida', stock_actual: 0, costo_unitario: 0, precio_venta: 0, activo: true, categoria: '', marca: '', presentacion_ml: '', tipo_envase: '', unidades_por_caja: '', proveedor_id: '' });
+      setForm({ nombre: '', descripcion: '', tipo_producto: 'bebida', stock_actual: 0, costo_unitario: 0, precio_venta: 0, precio_botella: 0, activo: true, categoria: '', marca: '', presentacion_ml: '', tipo_envase: '', unidades_por_caja: '', proveedor_id: '' });
       setErrores({});
       fetchProductos();
     } catch (e: any) {
@@ -219,7 +226,7 @@ export default function ProductosVendedorPage() {
     setForm({
       nombre: p.nombre, descripcion: p.descripcion || '', tipo_producto: p.tipo_producto,
       stock_actual: Math.floor(Number(p.stock_actual) / udsEdit),
-      costo_unitario: p.costo_unitario, precio_venta: p.precio_venta,
+      costo_unitario: p.costo_unitario, precio_venta: p.precio_venta, precio_botella: p.precio_botella || 0,
       activo: p.activo, categoria: p.categoria || '', marca: p.marca || '',
       presentacion_ml: p.presentacion_ml ? String(Math.round(Number(p.presentacion_ml))) : '', tipo_envase: p.tipo_envase || '', unidades_por_caja: p.unidades_por_caja ? String(Math.round(Number(p.unidades_por_caja))) : '',
       proveedor_id: p.proveedor_id ? String(p.proveedor_id) : ''
@@ -239,6 +246,7 @@ export default function ProductosVendedorPage() {
       stock_actual: 0,
       costo_unitario: Number(p.costo_unitario),
       precio_venta: Number(p.precio_venta),
+      precio_botella: Number(p.precio_botella) || 0,
       proveedor_id: p.proveedor_id ? String(p.proveedor_id) : ''
     });
     setShowQuickModal(true);
@@ -263,6 +271,7 @@ export default function ProductosVendedorPage() {
           cantidad_cajas: quickForm.stock_actual === '' ? 0 : quickForm.stock_actual,
           costo_unitario: quickForm.costo_unitario,
           precio_venta: quickForm.precio_venta,
+          precio_botella: quickForm.precio_botella || null,
         }),
       });
       if (!res.ok) {
@@ -299,7 +308,7 @@ export default function ProductosVendedorPage() {
   };
 
   const resetForm = () => {
-    setForm({ nombre: '', descripcion: '', tipo_producto: 'bebida', stock_actual: 0, costo_unitario: 0, precio_venta: 0, activo: true, categoria: '', marca: '', presentacion_ml: '', tipo_envase: '', unidades_por_caja: '', proveedor_id: '' });
+    setForm({ nombre: '', descripcion: '', tipo_producto: 'bebida', stock_actual: 0, costo_unitario: 0, precio_venta: 0, precio_botella: 0, activo: true, categoria: '', marca: '', presentacion_ml: '', tipo_envase: '', unidades_por_caja: '', proveedor_id: '' });
     setErrores({});
     setShowModal(true);
     setEditando(null);
@@ -562,16 +571,21 @@ export default function ProductosVendedorPage() {
                   <InputError campo="presentacion_ml" />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Costo de compra (Bs)</label>
-                  <input type="text" inputMode="numeric" value={form.costo_unitario ? Number(form.costo_unitario).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('costo_unitario', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.costo_unitario ? 'border-red-400' : 'border-gray-300'}`} />
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Costo de compra (Bs)</label>
+                  <input type="text" inputMode="numeric" value={form.costo_unitario ? Number(form.costo_unitario).toLocaleString('es') : ''} onChange={e => { const rawVal = e.target.value; if (/\s/.test(rawVal)) { setErrores((prev: any) => ({ ...prev, costo_unitario: 'El costo debe ser un número entero' })); return; } const raw = rawVal.replace(/[^0-9]/g, ''); handleFieldChange('costo_unitario', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.costo_unitario ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="costo_unitario" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Precio de venta (Bs)</label>
-                  <input type="text" inputMode="numeric" value={form.precio_venta ? Number(form.precio_venta).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('precio_venta', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.precio_venta ? 'border-red-400' : 'border-gray-300'}`} />
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Precio caja (Bs)</label>
+                  <input type="text" inputMode="numeric" value={form.precio_venta ? Number(form.precio_venta).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('precio_venta', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.precio_venta ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="precio_venta" />
+                </div>
+                <div>
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Precio botella (Bs)</label>
+                  <input type="text" inputMode="numeric" value={form.precio_botella ? Number(form.precio_botella).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('precio_botella', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.precio_botella ? 'border-red-400' : 'border-gray-300'}`} />
+                  <InputError campo="precio_botella" />
                 </div>
               </div>
               <div>
@@ -623,11 +637,15 @@ export default function ProductosVendedorPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Costo de compra (Bs)</label>
-                <input type="text" inputMode="numeric" value={quickForm.costo_unitario ? Number(quickForm.costo_unitario).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, costo_unitario: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                <input type="text" inputMode="numeric" value={quickForm.costo_unitario ? Number(quickForm.costo_unitario).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, costo_unitario: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Precio de venta (Bs)</label>
-                <input type="text" inputMode="numeric" value={quickForm.precio_venta ? Number(quickForm.precio_venta).toLocaleString('es-BO') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, precio_venta: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Precio de venta caja (Bs)</label>
+                <input type="text" inputMode="numeric" value={quickForm.precio_venta ? Number(quickForm.precio_venta).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, precio_venta: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Precio botella (Bs)</label>
+                <input type="text" inputMode="numeric" value={quickForm.precio_botella ? Number(quickForm.precio_botella).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, precio_botella: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Proveedor</label>

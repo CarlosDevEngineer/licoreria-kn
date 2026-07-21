@@ -112,7 +112,7 @@ export default function VentasVendedorPage() {
       .total-row { font-weight: bold; font-size: 14px; }
       .center { text-align: center; }
     </style></head><body>
-      <h2>Licorería KN</h2>
+      <h2> Drew Grand Reserve</h2>
       <p class="center">${new Date(v.fecha_venta).toLocaleString('es-ES')}</p>
       <p class="center">Factura #${v.numero_factura || v.venta_id}</p>
       <p>Cliente: ${v.cliente_nombre || 'N/A'}</p>
@@ -122,15 +122,15 @@ export default function VentasVendedorPage() {
           <tr>
             <td>${d.producto_nombre || `Prod #${d.producto_id}`}</td>
             <td class="right">${d.cantidad} ${d.tipo_venta === 'caja' ? 'caja(s)' : 'und'}</td>
-            <td class="right">Bs ${Number(d.precio_unitario).toFixed(2)}</td>
-            <td class="right">Bs ${Number(d.subtotal).toFixed(2)}</td>
+            <td class="right">Bs ${formatPrice(d.precio_unitario)}</td>
+            <td class="right">Bs ${formatPrice(d.subtotal)}</td>
           </tr>
         `).join('')}
       </tbody></table>
       <hr>
-      <p><strong>Subtotal:</strong> <span class="right">Bs ${subtotal.toFixed(2)}</span></p>
-      ${descuento > 0 ? `<p><strong>Descuento:</strong> <span class="right">-Bs ${descuento.toFixed(2)}</span></p>` : ''}
-      <p class="total-row">Total: <span class="right">Bs ${total.toFixed(2)}</span></p>
+      <p><strong>Subtotal:</strong> <span class="right">Bs ${formatPrice(subtotal)}</span></p>
+      ${descuento > 0 ? `<p><strong>Descuento:</strong> <span class="right">-Bs ${formatPrice(descuento)}</span></p>` : ''}
+      <p class="total-row">Total: <span class="right">Bs ${formatPrice(total)}</span></p>
       <hr>
       <p>Método de pago: ${v.metodo_pago || '-'}</p>
       <p class="center">¡Gracias por su compra!</p>
@@ -320,7 +320,7 @@ export default function VentasVendedorPage() {
                 return (
                   <div className="space-y-3 text-sm">
                     <div className="text-center border-b pb-3">
-                      <h2 className="text-lg font-bold">Licorería KN</h2>
+                      <h2 className="text-lg font-bold"> Drew Grand Reserve</h2>
                       <p className="text-gray-500">{new Date(v.fecha_venta).toLocaleString('es-ES')}</p>
                       <p className="text-gray-500">Factura #{v.numero_factura || v.venta_id}</p>
                     </div>

@@ -63,7 +63,7 @@ export default function LoginPage() {
               <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-3xl md:text-5xl font-bold text-gray-800">
-              Licorería KN
+               Drew Grand Reserve
             </h1>
             <p className="text-gray-600 mt-2 md:mt-3 text-base md:text-lg font-medium">Bienvenido al sistema</p>
           </div>

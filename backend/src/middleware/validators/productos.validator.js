@@ -17,6 +17,9 @@ const productoValidator = [
   body("precio_venta")
     .notEmpty().withMessage("El precio de venta es obligatorio")
     .isFloat({ min: 0 }).withMessage("El precio de venta debe ser un número positivo"),
+  body("precio_botella")
+    .optional({ values: "falsy" })
+    .isFloat({ min: 0 }).withMessage("El precio por botella debe ser un número positivo"),
   body("categoria")
     .optional({ values: "falsy" }).trim(),
   body("marca")

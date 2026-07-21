@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           bg-white text-gray-800 flex flex-col
           border-r border-gray-200 shadow-lg
           overflow-hidden
-          ${sidebarOpen ? 'w-64' : 'w-20'}
+          ${sidebarOpen ? 'w-72' : 'w-20'}
           transition-all duration-300 ease-in-out
           hidden md:flex
         `}
@@ -85,8 +85,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
                 <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap">Licorería KN</h1>
+              <div className="min-w-0">
+                <h1 className="text-base font-bold text-gray-800 truncate">Drew Grand Reserve</h1>
                 <p className="text-xs text-gray-500">Panel Admin</p>
               </div>
             </div>
@@ -158,8 +158,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
                 <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap">Licorería KN</h1>
+              <div className="min-w-0">
+                <h1 className="text-base font-bold text-gray-800 truncate">Drew Grand Reserve</h1>
                 <p className="text-xs text-gray-500">Panel Admin</p>
               </div>
             </div>

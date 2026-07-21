@@ -15,16 +15,16 @@ const getProductos = async (req, res) => {
 };
 
 const createProducto = async (req, res) => {
-  const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
+  const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
   const usuario_creacion_id = req.user?.id;
   try {
     const seqResult = await pool.query("SELECT nextval('productos_producto_id_seq'::regclass) AS next_id");
     const nextId = seqResult.rows[0].next_id;
     const codigo = `PR-${nextId}`;
     const result = await pool.query(
-      `INSERT INTO productos (nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
-      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id || null]
+      `INSERT INTO productos (nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella || null, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id || null]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -34,7 +34,7 @@ const createProducto = async (req, res) => {
 
 const updateProducto = async (req, res) => {
   const { id } = req.params;
-  const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, activo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
+  const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, activo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
   const usuario_id = req.user?.id;
   try {
     const oldProduct = await pool.query("SELECT stock_actual, costo_unitario FROM productos WHERE producto_id = $1", [id]);
@@ -42,8 +42,8 @@ const updateProducto = async (req, res) => {
     const oldCosto = Number(oldProduct.rows[0]?.costo_unitario) || 0;
 
     const result = await pool.query(
-      `UPDATE productos SET nombre = $1, descripcion = $2, tipo_producto = $3, stock_actual = $4, costo_unitario = $5, precio_venta = $6, activo = $7, categoria = $8, marca = $9, presentacion_ml = $10, tipo_envase = $11, unidades_por_caja = $12, proveedor_id = $13, fecha_modificacion = CURRENT_TIMESTAMP WHERE producto_id = $14 RETURNING *`,
-      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, activo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id || null, id]
+      `UPDATE productos SET nombre = $1, descripcion = $2, tipo_producto = $3, stock_actual = $4, costo_unitario = $5, precio_venta = $6, precio_botella = $7, activo = $8, categoria = $9, marca = $10, presentacion_ml = $11, tipo_envase = $12, unidades_por_caja = $13, proveedor_id = $14, fecha_modificacion = CURRENT_TIMESTAMP WHERE producto_id = $15 RETURNING *`,
+      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella || null, activo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id || null, id]
     );
 
     const newStock = Number(stock_actual) || 0;

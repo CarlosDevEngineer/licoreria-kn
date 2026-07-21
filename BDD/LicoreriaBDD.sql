@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS public.productos
     stock_actual integer NOT NULL,
     costo_unitario numeric(10, 2) NOT NULL,
     precio_venta numeric(10, 2),
+    precio_botella numeric(10, 2),
     activo boolean DEFAULT true,
     fecha_creacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     fecha_modificacion timestamp without time zone,
