@@ -60,7 +60,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-16 border border-gray-200 w-full max-w-[600px] flex flex-col justify-center">
           <div className="text-center mb-8 md:mb-10">
             <div className="inline-flex items-center justify-center w-28 h-28 md:w-36 md:h-36 rounded-full shadow-2xl mb-4 md:mb-6 overflow-hidden ring-4 ring-gray-300">
-              <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
+              <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-3xl md:text-5xl font-bold text-gray-800">
                Drew Grand Reserve

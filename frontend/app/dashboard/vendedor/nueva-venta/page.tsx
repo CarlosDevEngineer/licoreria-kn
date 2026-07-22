@@ -107,7 +107,7 @@ export default function NuevaVentaPage() {
         const tipoVenta = 'unidad';
         const pUnitario = Number(producto.precio_botella) || Number(producto.precio_venta) / udsPorCaja;
         return [...prev, {
-          producto_id: producto.producto_id, nombre: producto.nombre, cantidad: 1,
+          producto_id: producto.producto_id, codigo: producto.codigo, nombre: producto.nombre, cantidad: 1,
           precio_unitario: pUnitario, subtotal: pUnitario,
           stock_actual: Number(producto.stock_actual), tipo_producto: producto.tipo_producto,
           marca: producto.marca, presentacion_ml: producto.presentacion_ml,
@@ -182,9 +182,10 @@ export default function NuevaVentaPage() {
     html += '<p><strong>Factura:</strong> #' + (reciboData.venta?.numero_factura || reciboData.venta?.venta_id) + '</p>';
     html += '<p><strong>Fecha:</strong> ' + new Date(reciboData.venta?.fecha_venta).toLocaleDateString('es-ES') + '</p>';
     html += '<p><strong>Cliente:</strong> ' + reciboData.cliente_nombre + '</p>';
-    html += '<table><thead><tr><th>Producto</th><th class="text-right">Cant</th><th class="text-right">P.Unit</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
+    html += '<table><thead><tr><th>Codigo</th><th>Producto</th><th class="text-right">Cant</th><th class="text-right">P.Unit</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
     (reciboData.detalle || []).forEach(function(d: any) {
-      html += '<tr><td>' + d.producto_nombre + '</td><td class="text-right">' + d.cantidad + ' ' + (d.tipo_venta === 'caja' ? 'caja' : 'und') + '</td><td class="text-right">Bs ' + formatPrice(d.precio_unitario) + '</td><td class="text-right">Bs ' + formatPrice(d.subtotal) + '</td></tr>';
+      const cant = Math.round(Number(d.cantidad));
+      html += '<tr><td>' + (d.producto_codigo || '') + '</td><td>' + d.producto_nombre + '</td><td class="text-right">' + cant + ' ' + (d.tipo_venta === 'caja' ? 'caja' : 'und') + '</td><td class="text-right">Bs ' + formatPrice(d.precio_unitario) + '</td><td class="text-right">Bs ' + formatPrice(d.subtotal) + '</td></tr>';
     });
     html += '</tbody></table>';
     html += '<div class="total"><p><strong>Total: Bs ' + formatPrice(reciboData.venta?.total || total) + '</strong></p></div>';
@@ -302,6 +303,7 @@ export default function NuevaVentaPage() {
       }
       const data = await res.json();
       const detalleRecibo = carrito.map((p: any) => ({
+        producto_codigo: p.codigo,
         producto_nombre: p.nombre,
         cantidad: p.cantidad,
         tipo_venta: p.tipo_venta || 'unidad',
@@ -356,7 +358,7 @@ export default function NuevaVentaPage() {
                         </span>
                       </div>
                       <p className="font-medium text-base text-gray-800">{p.nombre}</p>
-                      <p className="text-sm text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${p.presentacion_ml}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
+                      <p className="text-sm text-gray-500">{p.marca ? `Marca: ${p.marca}` : ''}{p.marca && p.presentacion_ml ? ' | ' : ''}{p.presentacion_ml ? `${Math.round(Number(p.presentacion_ml))}${p.tipo_producto === 'bebida' ? 'ml' : 'kg'}` : ''}</p>
                       <p className="text-sm text-gray-500">{p.tipo_envase ? `Envase: ${p.tipo_envase}` : ''}</p>
                       <div className="flex justify-between items-center mt-3">
                         <div>
@@ -633,18 +635,20 @@ export default function NuevaVentaPage() {
               </div>
               <table className="w-full text-sm mb-4">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-2 text-gray-600 font-semibold">Producto</th>
-                    <th className="text-center py-2 text-gray-600 font-semibold">Cant.</th>
-                    <th className="text-right py-2 text-gray-600 font-semibold">P. Unit.</th>
-                    <th className="text-right py-2 text-gray-600 font-semibold">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {(reciboData.detalle || []).map((d: any, i: number) => (
-                    <tr key={i}>
-                      <td className="py-2 text-gray-800">{d.producto_nombre}</td>
-                      <td className="py-2 text-center text-gray-800">{d.cantidad} {d.tipo_venta === 'caja' ? 'caja' : 'und'}</td>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 text-gray-600 font-semibold">Codigo</th>
+                      <th className="text-left py-2 text-gray-600 font-semibold">Producto</th>
+                      <th className="text-center py-2 text-gray-600 font-semibold">Cant.</th>
+                      <th className="text-right py-2 text-gray-600 font-semibold">P. Unit.</th>
+                      <th className="text-right py-2 text-gray-600 font-semibold">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(reciboData.detalle || []).map((d: any, i: number) => (
+                      <tr key={i}>
+                        <td className="py-2 text-gray-800 font-mono">{d.producto_codigo || ''}</td>
+                        <td className="py-2 text-gray-800">{d.producto_nombre}</td>
+                        <td className="py-2 text-center text-gray-800">{Math.round(Number(d.cantidad))} {d.tipo_venta === 'caja' ? 'caja' : 'und'}</td>
                       <td className="py-2 text-right text-gray-800">Bs {formatPrice(d.precio_unitario)}</td>
                       <td className="py-2 text-right text-gray-800 font-medium">Bs {formatPrice(d.subtotal)}</td>
                     </tr>

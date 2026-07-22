@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("API Licoreria-KN");
+  res.send("API Licoreria-Drew Grand Reserve");
 });
 
 app.use(express.urlencoded({ extended: true }));

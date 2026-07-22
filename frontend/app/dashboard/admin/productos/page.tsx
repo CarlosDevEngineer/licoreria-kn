@@ -373,7 +373,7 @@ export default function ProductosPage() {
             {dataPaginada.map((p, idx) => (
               <tr key={p.producto_id} className="hover:bg-gray-50">
                 <td className="px-6 py-7 text-gray-800 text-base">{idx + 1}</td>
-                <td className="px-6 py-7 text-gray-800 text-base">PR-{p.producto_id}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{p.codigo || `PR-${String(p.producto_id).padStart(5, '0')}`}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{p.nombre}</td>
                 <td className="px-6 py-7">
                   <span className="px-2 py-1 rounded-[5px] text-xs font-medium bg-blue-300 text-blue-900">
@@ -483,8 +483,8 @@ export default function ProductosPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
                 <div>
                   <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Código</label>
-                  <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-500 text-xs md:text-sm">
-                    {editando ? `PR-${editando}` : `PR-${productos.reduce((max, p) => Math.max(max, p.producto_id || 0), 0) + 1}`}
+                  <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-500 text-xs md:text-sm font-mono">
+                    {editando ? (productos.find((p: any) => p.producto_id === editando)?.codigo || `PR-${String(editando).padStart(5, '0')}`) : 'Se genera al guardar'}
                   </div>
                 </div>
                 <div>

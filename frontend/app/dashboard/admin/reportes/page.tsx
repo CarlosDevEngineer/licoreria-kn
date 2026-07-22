@@ -119,12 +119,21 @@ interface MovimientoInventario {
   usuario_nombre: string | null;
 }
 
+interface StockHistorialItem {
+  producto_id: number;
+  producto_nombre: string;
+  producto_codigo: string;
+  unidades_por_caja: number;
+  dias: Record<string, number>;
+}
+
 export default function ReportesPage() {
-  const [tab, setTab] = useState<'ventas' | 'compras'>('ventas');
+  const [tab, setTab] = useState<'ventas' | 'compras' | 'stock'>('ventas');
   const [ventas, setVentas] = useState<VentaReporte[]>([]);
   const [compras, setCompras] = useState<CompraReporte[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
+  const [stockHistorial, setStockHistorial] = useState<StockHistorialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<Periodo>('dia');
   const [customDesde, setCustomDesde] = useState(() => {
@@ -137,6 +146,8 @@ export default function ReportesPage() {
   const [pageStock, setPageStock] = useState(1);
   const [pageCompras, setPageCompras] = useState(1);
   const [pageMovimientos, setPageMovimientos] = useState(1);
+  const [pageArqueo, setPageArqueo] = useState(1);
+  const [busquedaArqueo, setBusquedaArqueo] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -161,7 +172,7 @@ export default function ReportesPage() {
     setLoading(true);
     try {
       const q = `desde=${desde.toISOString().slice(0, 10)}&hasta=${hasta.toISOString().slice(0, 10)}`;
-      const [reporteRes, comprasRes, prodRes, movRes] = await Promise.all([
+      const [reporteRes, comprasRes, prodRes, movRes, stockHistRes] = await Promise.all([
         fetch(`/api/ventas/reporte?${q}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -174,11 +185,15 @@ export default function ReportesPage() {
         fetch(`/api/inventario/movimientos?${q}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`/api/inventario/stock-historial?${q}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
       if (reporteRes.ok) setVentas(await reporteRes.json());
       if (comprasRes.ok) setCompras(await comprasRes.json());
       if (prodRes.ok) setProductos(await prodRes.json());
       if (movRes.ok) setMovimientos(await movRes.json());
+      if (stockHistRes.ok) setStockHistorial(await stockHistRes.json());
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -231,6 +246,16 @@ export default function ReportesPage() {
     return ventas.filter(v => v.metodo_pago === filtroMetodoPago);
   }, [ventas, filtroMetodoPago]);
 
+  const ventasDetalleTotales = useMemo(() => {
+    let totalSubtotal = 0;
+    for (const v of ventasFiltradas) {
+      for (const d of v.detalle) {
+        totalSubtotal += Number(d.subtotal) || 0;
+      }
+    }
+    return { totalSubtotal };
+  }, [ventasFiltradas]);
+
   const totalPaginasVentas = Math.ceil(ventasFiltradas.length / itemsPorPagina);
   const dataPaginadaVentas = ventasFiltradas.slice((pageVentas - 1) * itemsPorPagina, pageVentas * itemsPorPagina);
   const totalPaginasCompras = Math.ceil(compras.length / itemsPorPagina);
@@ -238,6 +263,62 @@ export default function ReportesPage() {
   const comprasMovimientos = useMemo(() => movimientos.filter(m => m.tipo_movimiento === 'compra'), [movimientos]);
   const totalPaginasMovimientos = Math.ceil(comprasMovimientos.length / itemsPorPagina);
   const dataPaginadaMovimientos = comprasMovimientos.slice((pageMovimientos - 1) * itemsPorPagina, pageMovimientos * itemsPorPagina);
+
+  const stockFechas = useMemo(() => {
+    const fechasSet = new Set<string>();
+    for (const item of stockHistorial) {
+      for (const fecha of Object.keys(item.dias)) {
+        fechasSet.add(fecha);
+      }
+    }
+    return Array.from(fechasSet).sort();
+  }, [stockHistorial]);
+
+  const stockSorted = useMemo(() => {
+    return [...stockHistorial].sort((a, b) => a.producto_nombre.localeCompare(b.producto_nombre));
+  }, [stockHistorial]);
+
+  const totalPaginasStockHistorial = Math.ceil(stockSorted.length / itemsPorPagina);
+  const dataPaginadaStockHistorial = stockSorted.slice((pageStock - 1) * itemsPorPagina, pageStock * itemsPorPagina);
+
+  const arqueoProductos = useMemo(() => {
+    const prods = (Array.isArray(productos) ? productos : []).filter((p: any) => p.activo);
+    return prods.map((p: any) => {
+      const stock = Number(p.stock_actual) || 0;
+      const costo = Number(p.costo_unitario) || 0;
+      const precio = Number(p.precio_venta) || 0;
+      const uds = Number(p.unidades_por_caja) || 1;
+      const cajas = Math.floor(stock / uds);
+      const undSueltas = stock % uds;
+      return {
+        ...p,
+        stockNumerico: stock,
+        costoUnitario: costo,
+        precioVenta: precio,
+        unidadesPorCaja: uds,
+        cajas,
+        undSueltas,
+        valorTotalCosto: stock * costo,
+        valorTotalVenta: stock * precio,
+      };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [productos]);
+
+  const totalArqueoCosto = useMemo(() => arqueoProductos.reduce((s, p) => s + p.valorTotalCosto, 0), [arqueoProductos]);
+  const totalArqueoVenta = useMemo(() => arqueoProductos.reduce((s, p) => s + p.valorTotalVenta, 0), [arqueoProductos]);
+  const totalArqueoStock = useMemo(() => arqueoProductos.reduce((s, p) => s + p.stockNumerico, 0), [arqueoProductos]);
+  const totalArqueoCajas = useMemo(() => arqueoProductos.reduce((s, p) => s + p.cajas, 0), [arqueoProductos]);
+
+  const arqueoFiltrado = useMemo(() => {
+    if (!busquedaArqueo) return arqueoProductos;
+    const q = busquedaArqueo.toLowerCase();
+    return arqueoProductos.filter(p =>
+      p.codigo?.toLowerCase().includes(q) || p.nombre?.toLowerCase().includes(q)
+    );
+  }, [arqueoProductos, busquedaArqueo]);
+
+  const totalPaginasArqueo = Math.ceil(arqueoFiltrado.length / itemsPorPagina);
+  const dataPaginadaArqueo = arqueoFiltrado.slice((pageArqueo - 1) * itemsPorPagina, pageArqueo * itemsPorPagina);
 
   const exportExcel = async () => {
     setExporting('excel');
@@ -278,7 +359,7 @@ export default function ReportesPage() {
         XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
         const label = getPeriodoLabel(periodo, customDesde, customHasta).replace(/[/:]/g, '-');
         XLSX.writeFile(wb, `reporte_ventas_${label}.xlsx`);
-      } else {
+      } else if (tab === 'compras') {
         const rows: any[] = [];
         for (const c of compras) {
           for (const d of c.detalle) {
@@ -309,6 +390,20 @@ export default function ReportesPage() {
         XLSX.utils.book_append_sheet(wb, ws, 'Compras');
         const label = getPeriodoLabel(periodo, customDesde, customHasta).replace(/[/:]/g, '-');
         XLSX.writeFile(wb, `reporte_compras_${label}.xlsx`);
+      } else {
+        const header = ['#', 'Código', 'Producto', 'Categoría', 'Marca', 'Ud./Caja', 'Stock Cajas', 'Stock Unds', 'Stock Actual (Unidades)', 'Costo Unit.', 'P. Venta', 'V. Total Costo', 'V. Total Venta'];
+        const rows = arqueoProductos.map((p, idx) => [
+          idx + 1, p.codigo, p.nombre, p.categoria || '', p.marca || '',
+          p.unidadesPorCaja, p.cajas, p.undSueltas, p.stockNumerico,
+          p.costoUnitario, p.precioVenta, p.valorTotalCosto, p.valorTotalVenta
+        ]);
+        const footer = ['', '', 'TOTALES', '', '', '', '', '', totalArqueoStock, '', '', totalArqueoCosto, totalArqueoVenta];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([header, ...rows, footer]);
+        ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Arqueo Inventario');
+        const label = getPeriodoLabel(periodo, customDesde, customHasta).replace(/[/:]/g, '-');
+        XLSX.writeFile(wb, `arqueo_inventario_${label}.xlsx`);
       }
     } finally {
       setExporting(null);
@@ -350,7 +445,7 @@ export default function ReportesPage() {
           headStyles: { fillColor: [55, 65, 81], textColor: 255, fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [245, 245, 245] },
         });
-      } else {
+      } else if (tab === 'compras') {
         doc.setFontSize(16);
         doc.text('Reporte de Compras', 14, 20);
         doc.setFontSize(10);
@@ -379,6 +474,31 @@ export default function ReportesPage() {
           headStyles: { fillColor: [55, 65, 81], textColor: 255, fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [245, 245, 245] },
         });
+      } else {
+        doc.setFontSize(16);
+        doc.text('Arqueo de Inventario', 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Fecha: ${formatDate(new Date())}`, 14, 28);
+        doc.text(`Total productos: ${arqueoProductos.length}  |  Valor costo: Bs ${formatPrice(totalArqueoCosto)}  |  Valor venta: Bs ${formatPrice(totalArqueoVenta)}`, 14, 34);
+
+        const header = ['#', 'Código', 'Producto', 'Stock (Unds)', 'Costo Unit.', 'P. Venta', 'V. Costo', 'V. Venta'];
+        const body = arqueoProductos.map((p, idx) => [
+          String(idx + 1), p.codigo, p.nombre,
+          String(p.stockNumerico), `Bs ${formatPrice(p.costoUnitario)}`,
+          `Bs ${formatPrice(p.precioVenta)}`,
+          `Bs ${formatPrice(p.valorTotalCosto)}`,
+          `Bs ${formatPrice(p.valorTotalVenta)}`,
+        ]);
+
+        autoTable(doc, {
+          startY: 40,
+          head: [header],
+          body,
+          theme: 'striped',
+          styles: { fontSize: 7, cellPadding: 1.5 },
+          headStyles: { fillColor: [55, 65, 81], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [245, 245, 245] },
+        });
       }
 
       const fileName = `reporte_${tab}_${label.replace(/[/:]/g, '-')}.pdf`;
@@ -393,14 +513,14 @@ export default function ReportesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Reportes</h1>
-          <p className="text-sm text-gray-500 mt-1">Resumen de ventas, compras y exportación</p>
+          <p className="text-sm text-gray-500 mt-1">Resumen de ventas, compras, stock y exportación</p>
         </div>
         <div className="flex items-center gap-2">
           {exporting === 'excel' && <span className="text-sm text-gray-500 animate-pulse">Generando Excel...</span>}
           {exporting === 'pdf' && <span className="text-sm text-gray-500 animate-pulse">Generando PDF...</span>}
           <button
             onClick={exportExcel}
-            disabled={!!exporting || (tab === 'ventas' ? ventas.length === 0 : compras.length === 0)}
+            disabled={!!exporting || (tab === 'ventas' ? ventas.length === 0 : tab === 'compras' ? compras.length === 0 : arqueoProductos.length === 0)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 text-sm font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -410,7 +530,7 @@ export default function ReportesPage() {
           </button>
           <button
             onClick={exportPDF}
-            disabled={!!exporting || (tab === 'ventas' ? ventas.length === 0 : compras.length === 0)}
+            disabled={!!exporting || (tab === 'ventas' ? ventas.length === 0 : tab === 'compras' ? compras.length === 0 : arqueoProductos.length === 0)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40 text-sm font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -428,7 +548,7 @@ export default function ReportesPage() {
               {(['dia', 'semana', 'mes', 'personalizado'] as Periodo[]).map(p => (
                 <button
                   key={p}
-                  onClick={() => { setPeriodo(p); setPageVentas(1); setPageStock(1); setPageCompras(1); setPageMovimientos(1); }}
+                  onClick={() => { setPeriodo(p); setPageVentas(1); setPageStock(1); setPageCompras(1); setPageMovimientos(1); setPageArqueo(1); }}
                   className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     periodo === p ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
@@ -441,14 +561,14 @@ export default function ReportesPage() {
                 <input
                   type="date"
                   value={customDesde.toISOString().slice(0, 10)}
-                  onChange={e => { setCustomDesde(new Date(e.target.value + 'T00:00:00')); setPageVentas(1); setPageStock(1); setPageCompras(1); setPageMovimientos(1); }}
+                  onChange={e => { setCustomDesde(new Date(e.target.value + 'T00:00:00')); setPageVentas(1); setPageStock(1); setPageCompras(1); setPageMovimientos(1); setPageArqueo(1); }}
                   className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
                 />
                 <span className="text-gray-400">a</span>
                 <input
                   type="date"
                   value={customHasta.toISOString().slice(0, 10)}
-                  onChange={e => { setCustomHasta(new Date(e.target.value + 'T23:59:59')); setPageVentas(1); setPageStock(1); setPageCompras(1); setPageMovimientos(1); }}
+                  onChange={e => { setCustomHasta(new Date(e.target.value + 'T23:59:59')); setPageVentas(1); setPageStock(1); setPageCompras(1); setPageMovimientos(1); setPageArqueo(1); }}
                   className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
                 />
               </div>
@@ -458,7 +578,9 @@ export default function ReportesPage() {
             {getPeriodoLabel(periodo, customDesde, customHasta)}
             {!loading && (tab === 'ventas'
               ? ` — ${totalVentas} venta${totalVentas !== 1 ? 's' : ''}`
-              : ` — ${totalCompras} compra${totalCompras !== 1 ? 's' : ''} | ${movimientos.length} movimiento${movimientos.length !== 1 ? 's' : ''}`
+              : tab === 'compras'
+              ? ` — ${totalCompras} compra${totalCompras !== 1 ? 's' : ''} | ${movimientos.length} movimiento${movimientos.length !== 1 ? 's' : ''}`
+              : ` — ${arqueoProductos.length} producto${arqueoProductos.length !== 1 ? 's' : ''} | Valor: Bs ${formatPrice(totalArqueoCosto)}`
             )}
           </p>
         </div>
@@ -476,7 +598,13 @@ export default function ReportesPage() {
                 onClick={() => setTab('compras')}
                 className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'compras' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
-                Compras y Stock
+                Compras
+              </button>
+              <button
+                onClick={() => setTab('stock')}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'stock' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                Stock
               </button>
             </div>
           </div>
@@ -642,6 +770,13 @@ export default function ReportesPage() {
                       ))
                     )}
                   </tbody>
+                  <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-right text-sm font-bold text-gray-900"></td>
+                      <td className="px-6 py-4 text-right text-sm font-bold text-gray-900">Bs {formatPrice(ventasDetalleTotales.totalSubtotal)}</td>
+                      <td className="px-6 py-4"></td>
+                    </tr>
+                  </tfoot>
                 </table>
                 {totalPaginasVentas > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/80">
@@ -778,7 +913,7 @@ export default function ReportesPage() {
             )}
           </>
         )
-      ) : (
+      ) : tab === 'compras' ? (
         compras.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -830,7 +965,7 @@ export default function ReportesPage() {
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Fecha</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Proveedor</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Producto</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600 uppercase">Cantidad</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600 uppercase">Cantidad (Cajas)</th>
                       <th className="px-6 py-4 text-right text-sm font-semibold text-gray-600 uppercase">P. Unit.</th>
                       <th className="px-6 py-4 text-right text-sm font-semibold text-gray-600 uppercase">Subtotal</th>
                     </tr>
@@ -1002,6 +1137,187 @@ export default function ReportesPage() {
                 <p className="text-sm mt-1">Las compras se registran al crear una nueva compra</p>
               </div>
             )}
+          </>
+        )
+      ) : (
+        arqueoProductos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <p className="text-lg font-medium">No hay productos registrados</p>
+            <p className="text-sm mt-1">Registra productos para ver el arqueo de inventario</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2.5 bg-purple-50 rounded-xl">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">Inventario</span>
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Total productos</p>
+                <p className="text-3xl font-bold text-gray-900">{arqueoProductos.length}</p>
+              </div>
+              <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2.5 bg-blue-50 rounded-xl">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">Unidades</span>
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Stock total (unidades)</p>
+                <p className="text-3xl font-bold text-gray-900">{totalArqueoStock.toLocaleString('es-ES')}</p>
+              </div>
+              <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2.5 bg-orange-50 rounded-xl">
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full">Costo</span>
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Valor total (costo)</p>
+                <p className="text-3xl font-bold text-orange-600">Bs {formatPrice(totalArqueoCosto)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2.5 bg-green-50 rounded-xl">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">Venta</span>
+                </div>
+                <p className="text-sm text-gray-500 mb-1">Valor total (venta)</p>
+                <p className="text-3xl font-bold text-green-600">Bs {formatPrice(totalArqueoVenta)}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Arqueo de Inventario</h3>
+                    <p className="text-sm text-gray-500">Todos los productos activos con su stock actual, costos y valores</p>
+                  </div>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Buscar por código o producto..."
+                      value={busquedaArqueo}
+                      onChange={e => { setBusquedaArqueo(e.target.value); setPageArqueo(1); }}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-800 w-full sm:w-72"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-100 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase">#</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Código</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Producto</th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Ud./Caja</th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Stock (cajas)</th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Stock (uds)</th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Stock Actual (Unidades)</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Costo Unit.</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">P. Venta</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">V. Total Costo</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">V. Total Venta</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {dataPaginadaArqueo.map((p, idx) => (
+                      <tr key={p.producto_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-5 text-gray-800 text-sm">{(pageArqueo - 1) * itemsPorPagina + idx + 1}</td>
+                        <td className="px-4 py-5 text-gray-800 text-sm font-mono">{p.codigo}</td>
+                        <td className="px-4 py-5">
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{p.nombre}</p>
+                            {p.categoria && <p className="text-xs text-gray-500">{p.categoria}{p.marca ? ` · ${p.marca}` : ''}</p>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-5 text-center text-gray-800 text-sm">{p.unidadesPorCaja}</td>
+                        <td className="px-4 py-5 text-center text-gray-800 text-sm font-medium">{p.cajas}</td>
+                        <td className="px-4 py-5 text-center text-gray-800 text-sm">{p.undSueltas}</td>
+                        <td className="px-4 py-5 text-center">
+                          <span className={`inline-block px-2 py-0.5 text-xs font-bold rounded-lg ${p.stockNumerico === 0 ? 'bg-red-50 text-red-600' : p.stockNumerico <= p.unidadesPorCaja ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'}`}>
+                            {p.stockNumerico}
+                          </span>
+                        </td>
+                        <td className="px-4 py-5 text-right text-gray-800 text-sm">Bs {formatPrice(p.costoUnitario)}</td>
+                        <td className="px-4 py-5 text-right text-gray-800 text-sm">Bs {formatPrice(p.precioVenta)}</td>
+                        <td className="px-4 py-5 text-right font-medium text-orange-600 text-sm">Bs {formatPrice(p.valorTotalCosto)}</td>
+                        <td className="px-4 py-5 text-right font-medium text-green-600 text-sm">Bs {formatPrice(p.valorTotalVenta)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-4 text-right text-sm font-bold text-gray-900">TOTALES</td>
+                      <td className="px-4 py-4 text-center text-sm font-bold text-gray-900">{totalArqueoCajas.toLocaleString('es-ES')}</td>
+                      <td className="px-4 py-4 text-center text-sm font-bold text-gray-900">—</td>
+                      <td className="px-4 py-4 text-center text-sm font-bold text-gray-900">{totalArqueoStock.toLocaleString('es-ES')}</td>
+                      <td colSpan={2} className="px-4 py-4"></td>
+                      <td className="px-4 py-4 text-right text-sm font-bold text-orange-600">Bs {formatPrice(totalArqueoCosto)}</td>
+                      <td className="px-4 py-4 text-right text-sm font-bold text-green-600">Bs {formatPrice(totalArqueoVenta)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+                {totalPaginasArqueo > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/80">
+                    <span className="text-sm text-gray-500">{(pageArqueo - 1) * itemsPorPagina + 1}-{Math.min(pageArqueo * itemsPorPagina, arqueoFiltrado.length)} de {arqueoFiltrado.length}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPageArqueo(p => Math.max(1, p - 1))}
+                        disabled={pageArqueo === 1}
+                        className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(totalPaginasArqueo, 5) }, (_, i) => {
+                          let pageNum: number;
+                          if (totalPaginasArqueo <= 5) pageNum = i + 1;
+                          else if (pageArqueo <= 3) pageNum = i + 1;
+                          else if (pageArqueo >= totalPaginasArqueo - 2) pageNum = totalPaginasArqueo - 4 + i;
+                          else pageNum = pageArqueo - 2 + i;
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setPageArqueo(pageNum)}
+                              className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${pageArqueo === pageNum ? 'bg-gray-800 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 border border-transparent'}`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => setPageArqueo(p => Math.min(totalPaginasArqueo, p + 1))}
+                        disabled={pageArqueo === totalPaginasArqueo}
+                        className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+            </div>
           </>
         )
       )}

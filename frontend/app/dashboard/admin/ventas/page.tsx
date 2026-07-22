@@ -137,11 +137,12 @@ export default function VentasPage() {
       <p class="center">Factura #${v.numero_factura || v.venta_id}</p>
       <p>Cliente: ${v.cliente_nombre || 'N/A'}</p>
       <hr>
-      <table><thead><tr><th>Producto</th><th class="right">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead><tbody>
+      <table><thead><tr><th>Codigo</th><th>Producto</th><th class="right">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead><tbody>
         ${detalles.map((d: any) => `
           <tr>
+            <td>${d.producto_codigo || ''}</td>
             <td>${d.producto_nombre || `Prod #${d.producto_id}`}</td>
-            <td class="right">${d.cantidad} ${d.tipo_venta === 'caja' ? 'caja(s)' : 'und'}</td>
+            <td class="right">${Math.round(Number(d.cantidad))} ${d.tipo_venta === 'caja' ? 'caja' : 'und'}</td>
             <td class="right">Bs ${formatPrice(d.precio_unitario)}</td>
             <td class="right">Bs ${formatPrice(d.subtotal)}</td>
           </tr>
@@ -255,7 +256,7 @@ export default function VentasPage() {
               <tr key={v.venta_id} className="hover:bg-gray-50">
                 <td className="px-6 py-6 text-gray-800 text-base">{idx + 1}</td>
                 <td className="px-6 py-6 text-gray-800 text-base">{new Date(v.fecha_venta).toLocaleString()}</td>
-                <td className="px-6 py-6 text-gray-800 text-base">{v.cliente_nombre}</td>
+                <td className="px-6 py-6 text-gray-800 text-base">{v.cliente_nombre || 'N/A Sin cliente'}</td>
                 <td className="px-6 py-6 font-bold text-green-600 text-base">Bs {formatPrice(v.total)}</td>
                 <td className="px-6 py-6">
                   <span className={`px-2 py-1 rounded-full text-xs ${v.estado === 'completada' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -360,6 +361,7 @@ export default function VentasPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
+                          <th className="text-left py-1">Codigo</th>
                           <th className="text-left py-1">Producto</th>
                           <th className="text-right py-1">Cant.</th>
                           <th className="text-right py-1">Precio</th>
@@ -369,8 +371,9 @@ export default function VentasPage() {
                       <tbody>
                         {detalles.map((d: any, i: number) => (
                           <tr key={i} className="border-b border-gray-100">
+                            <td className="py-1 font-mono">{d.producto_codigo || ''}</td>
                             <td className="py-1">{d.producto_nombre || `Prod #${d.producto_id}`}</td>
-                            <td className="text-right py-1">{d.cantidad} {d.tipo_venta === 'caja' ? 'caja(s)' : 'und'}</td>
+                            <td className="text-right py-1">{Math.round(Number(d.cantidad))} {d.tipo_venta === 'caja' ? 'caja' : 'und'}</td>
                             <td className="text-right py-1">Bs {formatPrice(d.precio_unitario)}</td>
                             <td className="text-right py-1">Bs {formatPrice(d.subtotal)}</td>
                           </tr>

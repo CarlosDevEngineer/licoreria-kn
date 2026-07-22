@@ -18,9 +18,13 @@ const createProducto = async (req, res) => {
   const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
   const usuario_creacion_id = req.user?.id;
   try {
-    const seqResult = await pool.query("SELECT nextval('productos_producto_id_seq'::regclass) AS next_id");
-    const nextId = seqResult.rows[0].next_id;
-    const codigo = `PR-${nextId}`;
+    const maxResult = await pool.query("SELECT codigo FROM productos ORDER BY codigo DESC LIMIT 1");
+    let nextNum = 1;
+    if (maxResult.rows.length > 0 && maxResult.rows[0].codigo) {
+      const match = maxResult.rows[0].codigo.match(/PR-(\d+)/);
+      if (match) nextNum = parseInt(match[1], 10) + 1;
+    }
+    const codigo = `PR-${String(nextNum).padStart(5, '0')}`;
     const result = await pool.query(
       `INSERT INTO productos (nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,

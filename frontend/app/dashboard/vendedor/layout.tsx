@@ -80,7 +80,7 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
 
             <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
-                <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
+                <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-base font-bold text-gray-800 truncate">Drew Grand Reserve</h1>
@@ -90,7 +90,7 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
 
             {!sidebarOpen && (
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md mx-auto">
-                <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
               </div>
             )}
           </div>
@@ -153,7 +153,7 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
-                <img src="/Logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
+                <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-base font-bold text-gray-800 truncate">Drew Grand Reserve</h1>

@@ -31,4 +31,48 @@ const getMovimientos = async (req, res) => {
   }
 };
 
-module.exports = { getMovimientos };
+const getStockHistorial = async (req, res) => {
+  const { desde, hasta } = req.query;
+  if (!desde || !hasta) {
+    return res.status(400).json({ error: 'Se requieren los parámetros desde y hasta' });
+  }
+  try {
+    const query = `
+      SELECT 
+        m.producto_id,
+        DATE(m.fecha_movimiento) as fecha,
+        m.saldo_posterior as stock_final,
+        p.nombre as producto_nombre,
+        p.codigo as producto_codigo,
+        p.unidades_por_caja
+      FROM inventario_movimientos m
+      LEFT JOIN productos p ON m.producto_id = p.producto_id
+      WHERE m.fecha_movimiento >= $1::date 
+        AND m.fecha_movimiento < ($2::date + interval '1 day')
+      ORDER BY p.nombre, m.fecha_movimiento
+    `;
+    const result = await pool.query(query, [desde, hasta]);
+
+    const productMap = {};
+    for (const row of result.rows) {
+      const pid = row.producto_id;
+      const fecha = typeof row.fecha === 'string' ? row.fecha.slice(0, 10) : new Date(row.fecha).toISOString().slice(0, 10);
+      if (!productMap[pid]) {
+        productMap[pid] = {
+          producto_id: pid,
+          producto_nombre: row.producto_nombre,
+          producto_codigo: row.producto_codigo,
+          unidades_por_caja: Number(row.unidades_por_caja) || 1,
+          dias: {}
+        };
+      }
+      productMap[pid].dias[fecha] = Number(row.stock_final);
+    }
+
+    res.json(Object.values(productMap));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { getMovimientos, getStockHistorial };
