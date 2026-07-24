@@ -17,8 +17,8 @@ export default function NuevaVentaPage() {
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [observaciones, setObservaciones] = useState('');
   const [showClienteModal, setShowClienteModal] = useState(false);
-  const [nuevoCliente, setNuevoCliente] = useState({ nit_ci: '', nombre: '', telefono: '' });
-  const [clienteErrors, setClienteErrors] = useState({ nit_ci: '', nombre: '', telefono: '' });
+  const [nuevoCliente, setNuevoCliente] = useState({ nit_ci: '', nombre: '', celular: '' });
+  const [clienteErrors, setClienteErrors] = useState({ nit_ci: '', nombre: '', celular: '' });
   const [clienteBackendError, setClienteBackendError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -215,11 +215,11 @@ export default function NuevaVentaPage() {
         error = 'El NIT/CI debe tener entre 7 y 12 dígitos';
       }
     }
-    if (name === 'telefono' && value) {
+    if (name === 'celular' && value) {
       if (!SOLO_DIGITOS.test(value)) {
-        error = 'El teléfono solo puede contener números';
+        error = 'El celular solo puede contener números';
       } else if (value.length > 8) {
-        error = 'El teléfono debe tener máximo 8 dígitos';
+        error = 'El celular debe tener máximo 8 dígitos';
       }
     }
     setClienteErrors((prev: any) => ({ ...prev, [name]: error }));
@@ -230,7 +230,7 @@ export default function NuevaVentaPage() {
     const { name, value } = e.target;
     setNuevoCliente((prev: any) => ({ ...prev, [name]: value }));
     setClienteBackendError('');
-    if (['nombre', 'nit_ci', 'telefono'].includes(name)) {
+    if (['nombre', 'nit_ci', 'celular'].includes(name)) {
       validarClienteCampo(name, value);
     }
   };
@@ -239,7 +239,7 @@ export default function NuevaVentaPage() {
     e.preventDefault();
     const errNombre = validarClienteCampo('nombre', nuevoCliente.nombre);
     const errNit = validarClienteCampo('nit_ci', nuevoCliente.nit_ci);
-    const errTel = validarClienteCampo('telefono', nuevoCliente.telefono);
+    const errTel = validarClienteCampo('celular', nuevoCliente.celular);
     if (errNombre || errNit || errTel) return;
 
     const token = localStorage.getItem('token');
@@ -262,8 +262,8 @@ export default function NuevaVentaPage() {
       setClienteId(data.cliente_id);
       setClienteSearch('');
       setShowClienteModal(false);
-      setNuevoCliente({ nit_ci: '', nombre: '', telefono: '' });
-      setClienteErrors({ nit_ci: '', nombre: '', telefono: '' });
+      setNuevoCliente({ nit_ci: '', nombre: '', celular: '' });
+      setClienteErrors({ nit_ci: '', nombre: '', celular: '' });
       setClienteBackendError('');
     } catch (e: any) {
       setClienteBackendError('Error de conexión con el servidor');
@@ -562,9 +562,9 @@ export default function NuevaVentaPage() {
                 {clienteErrors.nombre && <p className="text-red-500 text-sm mt-1">{clienteErrors.nombre}</p>}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
-                <input type="text" name="telefono" placeholder="Número de teléfono" value={nuevoCliente.telefono} onChange={handleClienteChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
-                {clienteErrors.telefono && <p className="text-red-500 text-sm mt-1">{clienteErrors.telefono}</p>}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Celular</label>
+                <input type="text" name="celular" placeholder="Número de celular" value={nuevoCliente.celular} onChange={handleClienteChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${clienteErrors.celular ? 'border-red-500' : 'border-gray-300'}`} />
+                {clienteErrors.celular && <p className="text-red-500 text-sm mt-1">{clienteErrors.celular}</p>}
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2 cursor-pointer">
@@ -633,7 +633,7 @@ export default function NuevaVentaPage() {
                 <p><span className="font-semibold">Fecha:</span> {new Date(reciboData.venta?.fecha_venta).toLocaleDateString('es-ES')}</p>
                 <p><span className="font-semibold">Cliente:</span> {reciboData.cliente_nombre}</p>
               </div>
-              <table className="w-full text-sm mb-4">
+              <table className="w-full text-sm mb-4 whitespace-nowrap">
                 <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-2 text-gray-600 font-semibold">Codigo</th>

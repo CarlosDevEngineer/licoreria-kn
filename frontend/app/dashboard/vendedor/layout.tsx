@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 export default function VendedorLayout({ children }: { children: React.ReactNode }) {
@@ -79,8 +80,8 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
             </button>
 
             <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
-              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
-                <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover" />
+              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden relative">
+                <Image src="/LogoLicoreria.png" alt="Logo" width={40} height={40} className="w-full h-full object-cover" priority />
               </div>
               <div className="min-w-0">
                 <h1 className="text-base font-bold text-gray-800 truncate">Drew Grand Reserve</h1>
@@ -89,8 +90,8 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
             </div>
 
             {!sidebarOpen && (
-              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md mx-auto">
-                <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover rounded-xl" />
+              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md mx-auto relative">
+                <Image src="/LogoLicoreria.png" alt="Logo" width={40} height={40} className="w-full h-full object-cover rounded-xl" priority />
               </div>
             )}
           </div>
@@ -152,8 +153,8 @@ export default function VendedorLayout({ children }: { children: React.ReactNode
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden">
-                <img src="/LogoLicoreria.png" alt="Logo" className="w-full h-full object-cover" />
+              <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center shadow-md flex-shrink-0 overflow-hidden relative">
+                <Image src="/LogoLicoreria.png" alt="Logo" width={40} height={40} className="w-full h-full object-cover" priority />
               </div>
               <div className="min-w-0">
                 <h1 className="text-base font-bold text-gray-800 truncate">Drew Grand Reserve</h1>

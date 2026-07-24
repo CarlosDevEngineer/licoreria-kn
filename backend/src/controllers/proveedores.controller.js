@@ -10,27 +10,43 @@ const getProveedores = async (req, res) => {
 };
 
 const createProveedor = async (req, res) => {
-  const { nombre, nit, direccion, telefono, contacto } = req.body;
+  const { nombre, nit, direccion, celular, contacto } = req.body;
   const usuario_creacion_id = req.user?.id;
   try {
     const existente = await pool.query(
       "SELECT proveedor_id FROM proveedores WHERE nit = $1", [nit]
     );
     if (existente.rows.length > 0) {
-      return res.status(400).json({ error: "El NIT ya está registrado" });
+      return res.status(400).json({ error: "El NIT ya está registrado", campos: ['nit'] });
+    }
+    if (nombre) {
+      const existenteNombre = await pool.query(
+        "SELECT proveedor_id FROM proveedores WHERE LOWER(TRIM(nombre)) = LOWER(TRIM($1))", [nombre]
+      );
+      if (existenteNombre.rows.length > 0) {
+        return res.status(400).json({ error: "El nombre ya está registrado", campos: ['nombre'] });
+      }
+    }
+    if (celular) {
+      const existenteCel = await pool.query(
+        "SELECT proveedor_id FROM proveedores WHERE celular = $1", [celular]
+      );
+      if (existenteCel.rows.length > 0) {
+        return res.status(400).json({ error: "El celular ya está registrado", campos: ['celular'] });
+      }
     }
     if (contacto) {
       const emailExistente = await pool.query(
         "SELECT proveedor_id FROM proveedores WHERE contacto = $1", [contacto]
       );
       if (emailExistente.rows.length > 0) {
-        return res.status(400).json({ error: "El correo electrónico ya está registrado" });
+        return res.status(400).json({ error: "El correo electrónico ya está registrado", campos: ['contacto'] });
       }
     }
     const result = await pool.query(
-      `INSERT INTO proveedores (nombre, nit, direccion, telefono, contacto, usuario_creacion_id) 
+      `INSERT INTO proveedores (nombre, nit, direccion, celular, contacto, usuario_creacion_id) 
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [nombre, nit, direccion, telefono, contacto, usuario_creacion_id]
+      [nombre, nit, direccion, celular, contacto, usuario_creacion_id]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -43,25 +59,41 @@ const createProveedor = async (req, res) => {
 
 const updateProveedor = async (req, res) => {
   const { id } = req.params;
-  const { nombre, nit, direccion, telefono, contacto, activo } = req.body;
+  const { nombre, nit, direccion, celular, contacto, activo } = req.body;
   try {
     const existente = await pool.query(
       "SELECT proveedor_id FROM proveedores WHERE nit = $1 AND proveedor_id != $2", [nit, id]
     );
     if (existente.rows.length > 0) {
-      return res.status(400).json({ error: "El NIT ya está registrado" });
+      return res.status(400).json({ error: "El NIT ya está registrado", campos: ['nit'] });
+    }
+    if (nombre) {
+      const existenteNombre = await pool.query(
+        "SELECT proveedor_id FROM proveedores WHERE LOWER(TRIM(nombre)) = LOWER(TRIM($1)) AND proveedor_id != $2", [nombre, id]
+      );
+      if (existenteNombre.rows.length > 0) {
+        return res.status(400).json({ error: "El nombre ya está registrado", campos: ['nombre'] });
+      }
+    }
+    if (celular) {
+      const existenteCel = await pool.query(
+        "SELECT proveedor_id FROM proveedores WHERE celular = $1 AND proveedor_id != $2", [celular, id]
+      );
+      if (existenteCel.rows.length > 0) {
+        return res.status(400).json({ error: "El celular ya está registrado", campos: ['celular'] });
+      }
     }
     if (contacto) {
       const emailExistente = await pool.query(
         "SELECT proveedor_id FROM proveedores WHERE contacto = $1 AND proveedor_id != $2", [contacto, id]
       );
       if (emailExistente.rows.length > 0) {
-        return res.status(400).json({ error: "El correo electrónico ya está registrado" });
+        return res.status(400).json({ error: "El correo electrónico ya está registrado", campos: ['contacto'] });
       }
     }
     const result = await pool.query(
-      `UPDATE proveedores SET nombre = $1, nit = $2, direccion = $3, telefono = $4, contacto = $5, activo = $6 WHERE proveedor_id = $7 RETURNING *`,
-      [nombre, nit, direccion, telefono, contacto, activo, id]
+      `UPDATE proveedores SET nombre = $1, nit = $2, direccion = $3, celular = $4, contacto = $5, activo = $6 WHERE proveedor_id = $7 RETURNING *`,
+      [nombre, nit, direccion, celular, contacto, activo, id]
     );
     res.json(result.rows[0]);
   } catch (error) {

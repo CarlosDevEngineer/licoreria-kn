@@ -140,7 +140,7 @@ export default function VendedorDashboard() {
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Stock Disponible</h3>
           {productosData.length > 0 ? (
             <>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm whitespace-nowrap">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-3 py-2 text-left">Producto</th>

@@ -285,7 +285,7 @@ export default function ReportesPage() {
     const prods = (Array.isArray(productos) ? productos : []).filter((p: any) => p.activo);
     return prods.map((p: any) => {
       const stock = Number(p.stock_actual) || 0;
-      const costo = Number(p.costo_unitario) || 0;
+      const costo = Number(p.precio_botella) || 0;
       const precio = Number(p.precio_venta) || 0;
       const uds = Number(p.unidades_por_caja) || 1;
       const cajas = Math.floor(stock / uds);
@@ -298,14 +298,10 @@ export default function ReportesPage() {
         unidadesPorCaja: uds,
         cajas,
         undSueltas,
-        valorTotalCosto: stock * costo,
-        valorTotalVenta: stock * precio,
       };
     }).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [productos]);
 
-  const totalArqueoCosto = useMemo(() => arqueoProductos.reduce((s, p) => s + p.valorTotalCosto, 0), [arqueoProductos]);
-  const totalArqueoVenta = useMemo(() => arqueoProductos.reduce((s, p) => s + p.valorTotalVenta, 0), [arqueoProductos]);
   const totalArqueoStock = useMemo(() => arqueoProductos.reduce((s, p) => s + p.stockNumerico, 0), [arqueoProductos]);
   const totalArqueoCajas = useMemo(() => arqueoProductos.reduce((s, p) => s + p.cajas, 0), [arqueoProductos]);
 
@@ -391,16 +387,16 @@ export default function ReportesPage() {
         const label = getPeriodoLabel(periodo, customDesde, customHasta).replace(/[/:]/g, '-');
         XLSX.writeFile(wb, `reporte_compras_${label}.xlsx`);
       } else {
-        const header = ['#', 'Código', 'Producto', 'Categoría', 'Marca', 'Ud./Caja', 'Stock Cajas', 'Stock Unds', 'Stock Actual (Unidades)', 'Costo Unit.', 'P. Venta', 'V. Total Costo', 'V. Total Venta'];
+        const header = ['#', 'Código', 'Producto', 'Categoría', 'Marca', 'Ud./Caja', 'Stock Cajas', 'Stock Unds', 'Stock Actual (Unidades)', 'Costo Unidad', 'P.Venta (Caja)'];
         const rows = arqueoProductos.map((p, idx) => [
           idx + 1, p.codigo, p.nombre, p.categoria || '', p.marca || '',
           p.unidadesPorCaja, p.cajas, p.undSueltas, p.stockNumerico,
-          p.costoUnitario, p.precioVenta, p.valorTotalCosto, p.valorTotalVenta
+          p.costoUnitario, p.precioVenta
         ]);
-        const footer = ['', '', 'TOTALES', '', '', '', '', '', totalArqueoStock, '', '', totalArqueoCosto, totalArqueoVenta];
+        const footer = ['', '', 'TOTALES', '', '', '', '', '', totalArqueoStock, '', ''];
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet([header, ...rows, footer]);
-        ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+        ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
         XLSX.utils.book_append_sheet(wb, ws, 'Arqueo Inventario');
         const label = getPeriodoLabel(periodo, customDesde, customHasta).replace(/[/:]/g, '-');
         XLSX.writeFile(wb, `arqueo_inventario_${label}.xlsx`);
@@ -479,15 +475,13 @@ export default function ReportesPage() {
         doc.text('Arqueo de Inventario', 14, 20);
         doc.setFontSize(10);
         doc.text(`Fecha: ${formatDate(new Date())}`, 14, 28);
-        doc.text(`Total productos: ${arqueoProductos.length}  |  Valor costo: Bs ${formatPrice(totalArqueoCosto)}  |  Valor venta: Bs ${formatPrice(totalArqueoVenta)}`, 14, 34);
+        doc.text(`Total productos: ${arqueoProductos.length}  |  Stock total: ${totalArqueoStock.toLocaleString('es-ES')} unidades`, 14, 34);
 
-        const header = ['#', 'Código', 'Producto', 'Stock (Unds)', 'Costo Unit.', 'P. Venta', 'V. Costo', 'V. Venta'];
+        const header = ['#', 'Código', 'Producto', 'Stock (Unds)', 'Costo Unidad', 'P.Venta (Caja)'];
         const body = arqueoProductos.map((p, idx) => [
           String(idx + 1), p.codigo, p.nombre,
           String(p.stockNumerico), `Bs ${formatPrice(p.costoUnitario)}`,
           `Bs ${formatPrice(p.precioVenta)}`,
-          `Bs ${formatPrice(p.valorTotalCosto)}`,
-          `Bs ${formatPrice(p.valorTotalVenta)}`,
         ]);
 
         autoTable(doc, {
@@ -541,7 +535,8 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${tab === 'stock' ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
+        {tab !== 'stock' && (
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-gray-700 mr-2">Período:</span>
@@ -578,12 +573,11 @@ export default function ReportesPage() {
             {getPeriodoLabel(periodo, customDesde, customHasta)}
             {!loading && (tab === 'ventas'
               ? ` — ${totalVentas} venta${totalVentas !== 1 ? 's' : ''}`
-              : tab === 'compras'
-              ? ` — ${totalCompras} compra${totalCompras !== 1 ? 's' : ''} | ${movimientos.length} movimiento${movimientos.length !== 1 ? 's' : ''}`
-              : ` — ${arqueoProductos.length} producto${arqueoProductos.length !== 1 ? 's' : ''} | Valor: Bs ${formatPrice(totalArqueoCosto)}`
+              : ` — ${totalCompras} compra${totalCompras !== 1 ? 's' : ''} | ${movimientos.length} movimiento${movimientos.length !== 1 ? 's' : ''}`
             )}
           </p>
         </div>
+        )}
 
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -739,12 +733,13 @@ export default function ReportesPage() {
                 <p className="text-sm text-gray-500">{totalVentas} venta(s) en el período</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full whitespace-nowrap">
                   <thead className="bg-gray-100 sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Factura</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Fecha</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Cliente</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Usuario</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Producto</th>
                       <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600 uppercase">Cantidad</th>
                       <th className="px-6 py-4 text-right text-sm font-semibold text-gray-600 uppercase">P. Unit.</th>
@@ -759,6 +754,7 @@ export default function ReportesPage() {
                           <td className="px-6 py-6 font-medium text-gray-900 text-base">#{v.numero_factura}</td>
                           <td className="px-6 py-6 text-gray-800 text-base">{formatDate(new Date(v.fecha_venta))}</td>
                           <td className="px-6 py-6 text-gray-800 text-base">{v.cliente_nombre || '---'}</td>
+                          <td className="px-6 py-6 text-gray-800 text-base">{v.usuario_nombre || '---'}</td>
                           <td className="px-6 py-6 text-gray-800 text-base">{d.producto_nombre}</td>
                           <td className="px-6 py-6 text-center text-gray-800 text-base">{formatStockLabel(d)}</td>
                           <td className="px-6 py-6 text-right text-gray-800 text-base">Bs {formatPrice(d.precio_unitario)}</td>
@@ -772,7 +768,7 @@ export default function ReportesPage() {
                   </tbody>
                   <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-right text-sm font-bold text-gray-900"></td>
+                      <td colSpan={7} className="px-6 py-4 text-right text-sm font-bold text-gray-900"></td>
                       <td className="px-6 py-4 text-right text-sm font-bold text-gray-900">Bs {formatPrice(ventasDetalleTotales.totalSubtotal)}</td>
                       <td className="px-6 py-4"></td>
                     </tr>
@@ -839,7 +835,7 @@ export default function ReportesPage() {
                   <p className="text-sm text-gray-500 mb-4">{productosBajoStock.length} producto(s) necesitan reposición</p>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full whitespace-nowrap">
                       <thead className="bg-gray-100 sticky top-0 z-10">
                         <tr>
                           <th className="px-2 md:px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
@@ -958,7 +954,7 @@ export default function ReportesPage() {
                 <p className="text-sm text-gray-500">{totalCompras} compra(s) en el período</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full whitespace-nowrap">
                   <thead className="bg-gray-100 sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Factura</th>
@@ -1040,7 +1036,7 @@ export default function ReportesPage() {
                   <p className="text-sm text-gray-500">{comprasMovimientos.length} compra(s) en el período</p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full whitespace-nowrap">
                     <thead className="bg-gray-100 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Fecha</th>
@@ -1150,7 +1146,7 @@ export default function ReportesPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2.5 bg-purple-50 rounded-xl">
@@ -1175,30 +1171,6 @@ export default function ReportesPage() {
                 <p className="text-sm text-gray-500 mb-1">Stock total (unidades)</p>
                 <p className="text-3xl font-bold text-gray-900">{totalArqueoStock.toLocaleString('es-ES')}</p>
               </div>
-              <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2.5 bg-orange-50 rounded-xl">
-                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full">Costo</span>
-                </div>
-                <p className="text-sm text-gray-500 mb-1">Valor total (costo)</p>
-                <p className="text-3xl font-bold text-orange-600">Bs {formatPrice(totalArqueoCosto)}</p>
-              </div>
-              <div className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2.5 bg-green-50 rounded-xl">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">Venta</span>
-                </div>
-                <p className="text-sm text-gray-500 mb-1">Valor total (venta)</p>
-                <p className="text-3xl font-bold text-green-600">Bs {formatPrice(totalArqueoVenta)}</p>
-              </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -1206,7 +1178,7 @@ export default function ReportesPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Arqueo de Inventario</h3>
-                    <p className="text-sm text-gray-500">Todos los productos activos con su stock actual, costos y valores</p>
+                    <p className="text-sm text-gray-500">Todos los productos activos con su stock actual, costos</p>
                   </div>
                   <div className="relative">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1223,27 +1195,25 @@ export default function ReportesPage() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full whitespace-nowrap">
                   <thead className="bg-gray-100 sticky top-0 z-10">
                     <tr>
                       <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase">#</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Código</th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Código</th>
                       <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Producto</th>
                       <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Ud./Caja</th>
                       <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Stock (cajas)</th>
                       <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Stock (uds)</th>
                       <th className="px-4 py-4 text-center text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Stock Actual (Unidades)</th>
-                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Costo Unit.</th>
-                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">P. Venta</th>
-                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">V. Total Costo</th>
-                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">V. Total Venta</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">Costo Unidad</th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-600 uppercase whitespace-nowrap">P.Venta (Caja)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {dataPaginadaArqueo.map((p, idx) => (
                       <tr key={p.producto_id} className="hover:bg-gray-50">
                         <td className="px-4 py-5 text-gray-800 text-sm">{(pageArqueo - 1) * itemsPorPagina + idx + 1}</td>
-                        <td className="px-4 py-5 text-gray-800 text-sm font-mono">{p.codigo}</td>
+                        <td className="px-4 py-5 text-gray-800 text-sm font-mono whitespace-nowrap">{p.codigo}</td>
                         <td className="px-4 py-5">
                           <div>
                             <p className="font-medium text-gray-900 text-sm">{p.nombre}</p>
@@ -1260,8 +1230,6 @@ export default function ReportesPage() {
                         </td>
                         <td className="px-4 py-5 text-right text-gray-800 text-sm">Bs {formatPrice(p.costoUnitario)}</td>
                         <td className="px-4 py-5 text-right text-gray-800 text-sm">Bs {formatPrice(p.precioVenta)}</td>
-                        <td className="px-4 py-5 text-right font-medium text-orange-600 text-sm">Bs {formatPrice(p.valorTotalCosto)}</td>
-                        <td className="px-4 py-5 text-right font-medium text-green-600 text-sm">Bs {formatPrice(p.valorTotalVenta)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1272,8 +1240,6 @@ export default function ReportesPage() {
                       <td className="px-4 py-4 text-center text-sm font-bold text-gray-900">—</td>
                       <td className="px-4 py-4 text-center text-sm font-bold text-gray-900">{totalArqueoStock.toLocaleString('es-ES')}</td>
                       <td colSpan={2} className="px-4 py-4"></td>
-                      <td className="px-4 py-4 text-right text-sm font-bold text-orange-600">Bs {formatPrice(totalArqueoCosto)}</td>
-                      <td className="px-4 py-4 text-right text-sm font-bold text-green-600">Bs {formatPrice(totalArqueoVenta)}</td>
                     </tr>
                   </tfoot>
                 </table>

@@ -12,9 +12,10 @@ export default function ClientesVendedorPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState<any>(null);
-  const [form, setForm] = useState({ nit_ci: '', nombre: '', telefono: '' });
-  const [errors, setErrors] = useState({ nombre: '', nit_ci: '', telefono: '' });
+  const [form, setForm] = useState({ nit_ci: '', nombre: '', celular: '' });
+  const [errors, setErrors] = useState({ nombre: '', nit_ci: '', celular: '' });
   const [backendError, setBackendError] = useState('');
+  const [duplicados, setDuplicados] = useState<string[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [busqueda, setBusqueda] = useState('');
@@ -51,11 +52,11 @@ export default function ClientesVendedorPage() {
         error = 'El NIT/CI debe tener entre 7 y 12 dígitos';
       }
     }
-    if (name === 'telefono' && value) {
+    if (name === 'celular' && value) {
       if (!SOLO_DIGITOS.test(value)) {
-        error = 'El teléfono solo puede contener números';
-      } else if (value.length > 8) {
-        error = 'El teléfono debe tener máximo 8 dígitos';
+        error = 'El celular solo puede contener números';
+      } else if (value.length !== 8) {
+        error = 'El celular debe tener 8 dígitos';
       }
     }
     setErrors((prev: any) => ({ ...prev, [name]: error }));
@@ -66,7 +67,8 @@ export default function ClientesVendedorPage() {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     setBackendError('');
-    if (['nombre', 'nit_ci', 'telefono'].includes(name)) {
+    setDuplicados(prev => prev.filter(c => c !== name));
+    if (['nombre', 'nit_ci', 'celular'].includes(name)) {
       validarCampo(name, value);
     }
   };
@@ -75,7 +77,7 @@ export default function ClientesVendedorPage() {
     e.preventDefault();
     const errNombre = validarCampo('nombre', form.nombre);
     const errNit = validarCampo('nit_ci', form.nit_ci);
-    const errTel = validarCampo('telefono', form.telefono);
+    const errTel = validarCampo('celular', form.celular);
     if (errNombre || errNit || errTel) return;
 
     const token = localStorage.getItem('token');
@@ -97,12 +99,16 @@ export default function ClientesVendedorPage() {
       const data = await res.json();
       if (!res.ok) {
         setBackendError(data.error || 'Error al guardar');
+        if (data.campos) {
+          setDuplicados(data.campos);
+        }
         return;
       }
       setShowModal(false);
       setEditando(null);
-      setForm({ nit_ci: '', nombre: '', telefono: '' });
-      setErrors({ nombre: '', nit_ci: '', telefono: '' });
+      setForm({ nit_ci: '', nombre: '', celular: '' });
+      setErrors({ nombre: '', nit_ci: '', celular: '' });
+      setDuplicados([]);
       setBackendError('');
       fetchClientes();
     } catch (e: any) {
@@ -112,8 +118,9 @@ export default function ClientesVendedorPage() {
 
   const handleEdit = (c: any) => {
     setEditando(c.cliente_id);
-    setForm({ nit_ci: c.nit_ci, nombre: c.nombre, telefono: c.telefono || '' });
-    setErrors({ nombre: '', nit_ci: '', telefono: '' });
+    setForm({ nit_ci: c.nit_ci, nombre: c.nombre, celular: c.celular || '' });
+    setErrors({ nombre: '', nit_ci: '', celular: '' });
+    setDuplicados([]);
     setBackendError('');
     setShowModal(true);
   };
@@ -121,8 +128,9 @@ export default function ClientesVendedorPage() {
   const abrirNuevo = () => {
     setShowModal(true);
     setEditando(null);
-    setForm({ nit_ci: '', nombre: '', telefono: '' });
-    setErrors({ nombre: '', nit_ci: '', telefono: '' });
+    setForm({ nit_ci: '', nombre: '', celular: '' });
+    setErrors({ nombre: '', nit_ci: '', celular: '' });
+    setDuplicados([]);
     setBackendError('');
   };
 
@@ -179,13 +187,13 @@ export default function ClientesVendedorPage() {
 
       <div className="bg-white rounded-xl shadow">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full whitespace-nowrap">
             <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">NIT/CI</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Nombre</th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Teléfono</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Celular</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -194,7 +202,7 @@ export default function ClientesVendedorPage() {
                 <td className="px-6 py-7 text-gray-800 text-base">{(page - 1) * itemsPorPagina + idx + 1}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{c.nit_ci}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{c.nombre}</td>
-                <td className="px-6 py-7 text-gray-800 text-base">{c.telefono || '-'}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{c.celular || '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -268,18 +276,18 @@ export default function ClientesVendedorPage() {
               )}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">NIT/CI</label>
-                <input type="text" name="nit_ci" placeholder="Ingrese NIT o CI (7-12 dígitos)" value={form.nit_ci} onChange={handleChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errors.nit_ci ? 'border-red-500' : 'border-gray-300'}`} required />
+                <input type="text" name="nit_ci" placeholder="Ingrese NIT o CI (7-12 dígitos)" value={form.nit_ci} onChange={handleChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${duplicados.includes('nit_ci') ? 'border-red-700' : errors.nit_ci ? 'border-red-500' : 'border-gray-300'}`} required />
                 {errors.nit_ci && <p className="text-red-500 text-sm mt-1">{errors.nit_ci}</p>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
-                <input type="text" name="nombre" placeholder="Nombre completo" value={form.nombre} onChange={handleChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errors.nombre ? 'border-red-500' : 'border-gray-300'}`} required />
+                <input type="text" name="nombre" placeholder="Nombre completo" value={form.nombre} onChange={handleChange} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${duplicados.includes('nombre') ? 'border-red-700' : errors.nombre ? 'border-red-500' : 'border-gray-300'}`} required />
                 {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre}</p>}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
-                <input type="text" name="telefono" value={form.telefono} onChange={handleChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
-                {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Celular</label>
+                <input type="text" name="celular" value={form.celular} onChange={handleChange} maxLength={8} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${duplicados.includes('celular') ? 'border-red-700' : errors.celular ? 'border-red-500' : 'border-gray-300'}`} />
+                {errors.celular && <p className="text-red-500 text-sm mt-1">{errors.celular}</p>}
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2 cursor-pointer">

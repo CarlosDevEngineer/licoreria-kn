@@ -171,7 +171,7 @@ export default function UsuariosPage() {
 
       <div className="bg-white rounded-xl shadow">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full whitespace-nowrap">
             <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>

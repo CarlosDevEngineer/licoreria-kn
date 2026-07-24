@@ -13,9 +13,10 @@ export default function ProveedoresPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ nombre: '', nit: '', direccion: '', telefono: '', contacto: '', activo: true });
-  const [errors, setErrors] = useState({ nombre: '', nit: '', telefono: '', contacto: '' });
+  const [form, setForm] = useState({ nombre: '', nit: '', direccion: '', celular: '', contacto: '', activo: true });
+  const [errors, setErrors] = useState({ nombre: '', nit: '', celular: '', contacto: '' });
   const [backendError, setBackendError] = useState('');
+  const [duplicados, setDuplicados] = useState<string[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [page, setPage] = useState(1);
@@ -52,11 +53,11 @@ export default function ProveedoresPage() {
         error = 'El NIT debe tener entre 7 y 12 dígitos';
       }
     }
-    if (name === 'telefono' && value) {
+    if (name === 'celular' && value) {
       if (!SOLO_DIGITOS.test(value)) {
-        error = 'El teléfono solo puede contener números';
-      } else if (value.length > 8) {
-        error = 'El teléfono debe tener máximo 8 dígitos';
+        error = 'El celular solo puede contener números';
+      } else if (value.length !== 8) {
+        error = 'El celular debe tener 8 dígitos';
       }
     }
     if (name === 'contacto' && value && !EMAIL_REGEX.test(value)) {
@@ -71,7 +72,8 @@ export default function ProveedoresPage() {
     const val = type === 'checkbox' ? checked : value;
     setForm({ ...form, [name]: val });
     setBackendError('');
-    if (['nombre', 'nit', 'telefono', 'contacto'].includes(name)) {
+    setDuplicados(prev => prev.filter(c => c !== name));
+    if (['nombre', 'nit', 'celular', 'contacto'].includes(name)) {
       validarCampo(name, value);
     }
   };
@@ -80,7 +82,7 @@ export default function ProveedoresPage() {
     e.preventDefault();
     const errNombre = validarCampo('nombre', form.nombre);
     const errNit = validarCampo('nit', form.nit);
-    const errTel = validarCampo('telefono', form.telefono);
+    const errTel = validarCampo('celular', form.celular);
     const errEmail = validarCampo('contacto', form.contacto);
     if (errNombre || errNit || errTel || errEmail) return;
 
@@ -103,12 +105,16 @@ export default function ProveedoresPage() {
       const data = await res.json();
       if (!res.ok) {
         setBackendError(data.error || 'Error al guardar');
+        if (data.campos) {
+          setDuplicados(data.campos);
+        }
         return;
       }
       setShowModal(false);
       setEditando(null);
-      setForm({ nombre: '', nit: '', direccion: '', telefono: '', contacto: '', activo: true });
-      setErrors({ nombre: '', nit: '', telefono: '', contacto: '' });
+      setForm({ nombre: '', nit: '', direccion: '', celular: '', contacto: '', activo: true });
+      setErrors({ nombre: '', nit: '', celular: '', contacto: '' });
+      setDuplicados([]);
       setBackendError('');
       fetchProveedores();
     } catch (e: any) {
@@ -118,8 +124,9 @@ export default function ProveedoresPage() {
 
   const handleEdit = (p: any) => {
     setEditando(p.proveedor_id);
-    setForm({ nombre: p.nombre, nit: p.nit, direccion: p.direccion || '', telefono: p.telefono || '', contacto: p.contacto || '', activo: p.activo });
-    setErrors({ nombre: '', nit: '', telefono: '', contacto: '' });
+    setForm({ nombre: p.nombre, nit: p.nit, direccion: p.direccion || '', celular: p.celular || '', contacto: p.contacto || '', activo: p.activo });
+    setErrors({ nombre: '', nit: '', celular: '', contacto: '' });
+    setDuplicados([]);
     setBackendError('');
     setShowModal(true);
   };
@@ -127,8 +134,9 @@ export default function ProveedoresPage() {
   const abrirNuevo = () => {
     setShowModal(true);
     setEditando(null);
-    setForm({ nombre: '', nit: '', direccion: '', telefono: '', contacto: '', activo: true });
-    setErrors({ nombre: '', nit: '', telefono: '', contacto: '' });
+    setForm({ nombre: '', nit: '', direccion: '', celular: '', contacto: '', activo: true });
+    setErrors({ nombre: '', nit: '', celular: '', contacto: '' });
+    setDuplicados([]);
     setBackendError('');
   };
 
@@ -185,13 +193,13 @@ export default function ProveedoresPage() {
 
       <div className="bg-white rounded-xl shadow">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full whitespace-nowrap">
             <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Nombre</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">NIT</th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Teléfono</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Celular</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Email</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Estado</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase">Acciones</th>
@@ -203,7 +211,7 @@ export default function ProveedoresPage() {
                 <td className="px-6 py-7 text-gray-800 text-base">{idx + 1}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{p.nombre}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{p.nit}</td>
-                <td className="px-6 py-7 text-gray-800 text-base">{p.telefono || '-'}</td>
+                <td className="px-6 py-7 text-gray-800 text-base">{p.celular || '-'}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{p.contacto || '-'}</td>
                 <td className="px-6 py-7">
                   <span className={`px-2 py-1 rounded-full text-xs ${p.activo ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-800'}`}>
@@ -300,12 +308,12 @@ export default function ProveedoresPage() {
               )}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
-                <input type="text" name="nombre" value={form.nombre} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.nombre ? 'border-red-500' : 'border-gray-300'}`} />
+                <input type="text" name="nombre" value={form.nombre} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${duplicados.includes('nombre') ? 'border-red-700' : errors.nombre ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre}</p>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">NIT</label>
-                <input type="text" name="nit" value={form.nit} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.nit ? 'border-red-500' : 'border-gray-300'}`} />
+                <input type="text" name="nit" value={form.nit} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${duplicados.includes('nit') ? 'border-red-700' : errors.nit ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.nit && <p className="text-red-500 text-sm mt-1">{errors.nit}</p>}
               </div>
               <div>
@@ -313,13 +321,13 @@ export default function ProveedoresPage() {
                 <input type="text" name="direccion" value={form.direccion} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
-                <input type="text" name="telefono" value={form.telefono} onChange={handleChange} maxLength={8} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
-                {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Celular</label>
+                <input type="text" name="celular" value={form.celular} onChange={handleChange} maxLength={8} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${duplicados.includes('celular') ? 'border-red-700' : errors.celular ? 'border-red-500' : 'border-gray-300'}`} />
+                {errors.celular && <p className="text-red-500 text-sm mt-1">{errors.celular}</p>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Correo Electrónico</label>
-                <input type="email" name="contacto" value={form.contacto} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${errors.contacto ? 'border-red-500' : 'border-gray-300'}`} />
+                <input type="email" name="contacto" value={form.contacto} onChange={handleChange} className={`w-full border rounded-lg px-4 py-2 text-gray-800 ${duplicados.includes('contacto') ? 'border-red-700' : errors.contacto ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.contacto && <p className="text-red-500 text-sm mt-1">{errors.contacto}</p>}
               </div>
               <label className="flex items-center gap-2 text-gray-800">

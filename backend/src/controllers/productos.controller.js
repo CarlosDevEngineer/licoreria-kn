@@ -18,19 +18,23 @@ const createProducto = async (req, res) => {
   const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
   const usuario_creacion_id = req.user?.id;
   try {
-    const maxResult = await pool.query("SELECT codigo FROM productos ORDER BY codigo DESC LIMIT 1");
-    let nextNum = 1;
-    if (maxResult.rows.length > 0 && maxResult.rows[0].codigo) {
-      const match = maxResult.rows[0].codigo.match(/PR-(\d+)/);
-      if (match) nextNum = parseInt(match[1], 10) + 1;
+    if (nombre) {
+      const existente = await pool.query(
+        `SELECT producto_id FROM productos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM($1))`, [nombre]
+      );
+      if (existente.rows.length > 0) {
+        return res.status(400).json({ error: "Ya existe un producto con ese nombre", campos: ['nombre'] });
+      }
     }
-    const codigo = `PR-${String(nextNum).padStart(5, '0')}`;
-    const result = await pool.query(
-      `INSERT INTO productos (nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
+    const nextId = await pool.query("SELECT COALESCE(MAX(producto_id), 0) + 1 AS next_id FROM productos");
+    const nuevoId = nextId.rows[0].next_id;
+    const codigo = `PR-${String(nuevoId).padStart(4, '0')}`;
+    const insertResult = await pool.query(
+      `INSERT INTO productos (codigo, nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
-      [nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella || null, codigo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id || null]
+      [codigo, nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella || null, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, usuario_creacion_id, proveedor_id || null]
     );
-    res.json(result.rows[0]);
+    res.json(insertResult.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -41,6 +45,15 @@ const updateProducto = async (req, res) => {
   const { nombre, descripcion, tipo_producto, stock_actual, costo_unitario, precio_venta, precio_botella, activo, categoria, marca, presentacion_ml, tipo_envase, unidades_por_caja, proveedor_id } = req.body;
   const usuario_id = req.user?.id;
   try {
+    if (nombre) {
+      const existente = await pool.query(
+        `SELECT producto_id FROM productos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM($1)) AND producto_id != $2`, [nombre, id]
+      );
+      if (existente.rows.length > 0) {
+        return res.status(400).json({ error: "Ya existe un producto con ese nombre", campos: ['nombre'] });
+      }
+    }
+
     const oldProduct = await pool.query("SELECT stock_actual, costo_unitario FROM productos WHERE producto_id = $1", [id]);
     const oldStock = Number(oldProduct.rows[0]?.stock_actual) || 0;
     const oldCosto = Number(oldProduct.rows[0]?.costo_unitario) || 0;

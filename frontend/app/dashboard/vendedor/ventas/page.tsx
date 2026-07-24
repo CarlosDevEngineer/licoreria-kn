@@ -217,7 +217,7 @@ export default function VentasVendedorPage() {
       ) : (
         <div className="bg-white rounded-xl shadow">
           <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full whitespace-nowrap">
                 <thead className="bg-gray-100 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
@@ -326,7 +326,7 @@ export default function VentasVendedorPage() {
                       <p className="text-gray-500">Factura #{v.numero_factura || v.venta_id}</p>
                     </div>
                     <p><strong>Cliente:</strong> {v.cliente_nombre || <span className="italic text-gray-400">N/A</span>}</p>
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm whitespace-nowrap">
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-1">Codigo</th>

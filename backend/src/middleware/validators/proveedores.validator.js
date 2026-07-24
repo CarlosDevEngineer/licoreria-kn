@@ -13,11 +13,11 @@ const proveedorValidator = [
     .isLength({ min: 7, max: 12 }).withMessage("El NIT debe tener entre 7 y 12 dígitos"),
   body("direccion")
     .optional({ values: "falsy" }).trim(),
-  body("telefono")
+  body("celular")
     .optional({ values: "falsy" })
     .trim()
-    .matches(SOLO_DIGITOS).withMessage("El teléfono solo puede contener números")
-    .isLength({ max: 8 }).withMessage("El teléfono debe tener máximo 8 dígitos"),
+    .matches(SOLO_DIGITOS).withMessage("El celular solo puede contener números")
+    .isLength({ min: 8, max: 8 }).withMessage("El celular debe tener 8 dígitos"),
   body("contacto")
     .optional({ values: "falsy" })
     .trim()

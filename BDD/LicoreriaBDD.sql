@@ -305,7 +305,7 @@ CREATE OR REPLACE FUNCTION auto_generar_codigo_producto()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.codigo IS NULL THEN
-    NEW.codigo := 'PR-' || NEW.producto_id;
+    NEW.codigo := 'PR-' || LPAD(NEW.producto_id::text, 4, '0');
   END IF;
   RETURN NEW;
 END;

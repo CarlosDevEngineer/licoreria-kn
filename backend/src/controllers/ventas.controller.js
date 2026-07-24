@@ -125,7 +125,7 @@ const getProductosMasVendidos = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        p.producto_id, p.nombre, p.codigo,
+        p.producto_id, p.nombre, p.codigo, p.unidades_por_caja,
         SUM(
           CASE WHEN vd.tipo_venta = 'caja' THEN vd.cantidad * COALESCE(p.unidades_por_caja, 1)
           ELSE vd.cantidad END
@@ -135,7 +135,7 @@ const getProductosMasVendidos = async (req, res) => {
       JOIN productos p ON vd.producto_id = p.producto_id
       JOIN ventas v ON vd.venta_id = v.venta_id
       WHERE v.estado = 'completada'
-      GROUP BY p.producto_id, p.nombre, p.codigo
+      GROUP BY p.producto_id, p.nombre, p.codigo, p.unidades_por_caja
       ORDER BY total_unidades_vendidas DESC
       LIMIT 10
     `);

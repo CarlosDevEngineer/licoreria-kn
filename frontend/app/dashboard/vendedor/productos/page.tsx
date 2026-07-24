@@ -26,6 +26,8 @@ export default function ProductosVendedorPage() {
   const [quickProduct, setQuickProduct] = useState<any>(null);
   const [quickForm, setQuickForm] = useState<{ stock_actual: number | ''; costo_unitario: number; precio_venta: number; precio_botella: number; proveedor_id: string }>({ stock_actual: 0, costo_unitario: 0, precio_venta: 0, precio_botella: 0, proveedor_id: '' });
   const [errores, setErrores] = useState<any>({});
+  const [errorGeneral, setErrorGeneral] = useState('');
+  const [duplicados, setDuplicados] = useState<string[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
@@ -158,11 +160,13 @@ export default function ProductosVendedorPage() {
     if (form.precio_venta === '' || form.precio_venta === 0) errs.precio_venta = 'El precio es obligatorio';
     else if (form.precio_venta < 0) errs.precio_venta = 'El precio no puede ser negativo';
     else if (!DECIMALES.test(String(form.precio_venta))) errs.precio_venta = 'El precio debe ser un número válido';
-    if (form.precio_botella && form.precio_botella < 0) errs.precio_botella = 'El precio por botella no puede ser negativo';
-    else if (form.precio_botella && !DECIMALES.test(String(form.precio_botella))) errs.precio_botella = 'El precio por botella debe ser un número válido';
-    if (form.categoria && !SOLO_LETRAS.test(form.categoria)) errs.categoria = 'La categoría solo puede contener letras';
+    if (form.precio_botella && form.precio_botella < 0) errs.precio_botella = 'El precio por unidad no puede ser negativo';
+    else if (form.precio_botella && !DECIMALES.test(String(form.precio_botella))) errs.precio_botella = 'El precio por unidad debe ser un número válido';
+    if (!form.categoria) errs.categoria = 'La categoría es obligatoria';
+    else if (!SOLO_LETRAS.test(form.categoria)) errs.categoria = 'La categoría solo puede contener letras';
+    if (form.tipo_producto === 'bebida' && !form.tipo_envase) errs.tipo_envase = 'Seleccione tipo de envase';
     if (form.presentacion_ml && !SOLO_NUMEROS.test(String(form.presentacion_ml))) errs.presentacion_ml = 'La presentación solo puede contener números';
-    if (form.tipo_envase && form.tipo_producto === 'bebida' && !SOLO_LETRAS.test(form.tipo_envase)) errs.tipo_envase = 'El tipo de envase solo puede contener letras';
+    if (!form.unidades_por_caja || form.unidades_por_caja === '' || form.unidades_por_caja === 0) errs.unidades_por_caja = 'Las unidades por caja son obligatorias';
     setErrores(errs);
     return Object.keys(errs).length === 0;
   };
@@ -181,6 +185,8 @@ export default function ProductosVendedorPage() {
       proveedor_id: form.proveedor_id === '' ? null : parseInt(form.proveedor_id),
     };
     try {
+      setErrorGeneral('');
+      setDuplicados([]);
       if (editando) {
         const res = await fetch(`/api/productos/${editando}`, {
           method: 'PUT',
@@ -192,7 +198,8 @@ export default function ProductosVendedorPage() {
         });
         if (!res.ok) {
           const data = await res.json();
-          alert('Error: ' + (data.error || 'Error al guardar'));
+          setErrorGeneral(data.error || 'Error al guardar');
+          if (data.campos) setDuplicados(data.campos);
           return;
         }
       } else {
@@ -206,7 +213,8 @@ export default function ProductosVendedorPage() {
         });
         if (!res.ok) {
           const data = await res.json();
-          alert('Error: ' + (data.error || 'Error al guardar'));
+          setErrorGeneral(data.error || 'Error al guardar');
+          if (data.campos) setDuplicados(data.campos);
           return;
         }
       }
@@ -318,6 +326,8 @@ export default function ProductosVendedorPage() {
     setShowModal(false);
     setEditando(null);
     setErrores({});
+    setErrorGeneral('');
+    setDuplicados([]);
   };
 
   const InputError = ({ campo }: { campo: any }) => errores[campo] ? <p className="text-red-500 text-xs mt-1">{errores[campo]}</p> : null;
@@ -353,7 +363,7 @@ export default function ProductosVendedorPage() {
 
       <div className="bg-white rounded-xl shadow">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full whitespace-nowrap">
             <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600 uppercase"></th>
@@ -372,7 +382,7 @@ export default function ProductosVendedorPage() {
             {productosPaginados.map((p, idx) => (
               <tr key={p.producto_id} className="hover:bg-gray-50">
 <td className="px-6 py-7 text-gray-800 text-base">{(page - 1) * itemsPorPagina + idx + 1}</td>
-                 <td className="px-6 py-7 text-gray-800 text-base">{p.codigo || `PR-${String(p.producto_id).padStart(5, '0')}`}</td>
+                 <td className="px-6 py-7 text-gray-800 text-base">{p.codigo || `PR-${String(p.producto_id).padStart(4, '0')}`}</td>
                 <td className="px-6 py-7 text-gray-800 text-base">{p.nombre}</td>
                 <td className="px-6 py-7">
                   <span className="px-2 py-1 rounded-[5px] text-xs font-medium bg-blue-300 text-blue-900">
@@ -471,12 +481,12 @@ export default function ProductosVendedorPage() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Código</label>
                   <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-gray-500 text-sm font-mono">
-                    {editando ? (productos.find((p: any) => p.producto_id === editando)?.codigo || `PR-${String(editando).padStart(5, '0')}`) : 'Se genera al guardar'}
+                    {editando ? (productos.find((p: any) => p.producto_id === editando)?.codigo || `PR-${String(editando).padStart(4, '0')}`) : (() => { const nums = productos.map((p: any) => { const m = (p.codigo || '').match(/PR-(\d+)/); return m ? parseInt(m[1], 10) : 0; }); const maxNum = nums.length > 0 ? Math.max(...nums) : 0; return `PR-${String(maxNum + 1).padStart(4, '0')}`; })()}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
-                  <input type="text" value={form.nombre} onChange={e => handleFieldChange('nombre', e.target.value)} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.nombre ? 'border-red-400' : 'border-gray-300'}`} />
+                  <input type="text" value={form.nombre} onChange={e => handleFieldChange('nombre', e.target.value)} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${duplicados.includes('nombre') ? 'border-red-700' : errores.nombre ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="nombre" />
                 </div>
               </div>
@@ -513,14 +523,14 @@ export default function ProductosVendedorPage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Categoría</label>
                     {showNuevaCategoria ? (
-                      <div className="flex gap-2">
-                        <input type="text" value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} placeholder="Nueva categoría" className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
-                        <button type="button" onClick={() => { if (nuevaCategoria.trim()) { setCategorias([...categorias, nuevaCategoria.trim()]); setForm({...form, categoria: nuevaCategoria.trim()}); setNuevaCategoria(''); setShowNuevaCategoria(false); } }} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 cursor-pointer">OK</button>
-                        <button type="button" onClick={() => { setNuevaCategoria(''); setShowNuevaCategoria(false); }} className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 cursor-pointer">X</button>
+                      <div className="flex gap-2 min-w-0">
+                        <input type="text" value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} placeholder="Nueva categoría" className="flex-1 min-w-0 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                        <button type="button" onClick={() => { if (nuevaCategoria.trim()) { setCategorias([...categorias, nuevaCategoria.trim()]); setForm({...form, categoria: nuevaCategoria.trim()}); setNuevaCategoria(''); setShowNuevaCategoria(false); } }} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 cursor-pointer shrink-0">OK</button>
+                        <button type="button" onClick={() => { setNuevaCategoria(''); setShowNuevaCategoria(false); }} className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 cursor-pointer shrink-0">X</button>
                       </div>
                     ) : (
                       <div className="flex gap-2 min-w-0 overflow-hidden">
-                        <CustomSelect value={form.categoria} onChange={v => handleFieldChange('categoria', v)} className="w-52 sm:w-56 shrink-0" error={errores.categoria} options={[
+                        <CustomSelect value={form.categoria} onChange={v => handleFieldChange('categoria', v)} className="flex-1 min-w-0" error={errores.categoria} options={[
                           { value: '', label: 'Seleccionar categoría' },
                           ...[...categorias].sort((a, b) => a.localeCompare(b, 'es')).map(c => ({ value: c, label: c })),
                         ]} />
@@ -534,14 +544,14 @@ export default function ProductosVendedorPage() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Categoría</label>
                   {showNuevaCategoria ? (
-                    <div className="flex gap-2">
-                      <input type="text" value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} placeholder="Nueva categoría" className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
-                      <button type="button" onClick={() => { if (nuevaCategoria.trim()) { setCategorias([...categorias, nuevaCategoria.trim()]); setForm({...form, categoria: nuevaCategoria.trim()}); setNuevaCategoria(''); setShowNuevaCategoria(false); } }} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 cursor-pointer">OK</button>
-                      <button type="button" onClick={() => { setNuevaCategoria(''); setShowNuevaCategoria(false); }} className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 cursor-pointer">X</button>
+                    <div className="flex gap-2 min-w-0">
+                      <input type="text" value={nuevaCategoria} onChange={e => setNuevaCategoria(e.target.value)} placeholder="Nueva categoría" className="flex-1 min-w-0 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                      <button type="button" onClick={() => { if (nuevaCategoria.trim()) { setCategorias([...categorias, nuevaCategoria.trim()]); setForm({...form, categoria: nuevaCategoria.trim()}); setNuevaCategoria(''); setShowNuevaCategoria(false); } }} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 cursor-pointer shrink-0">OK</button>
+                      <button type="button" onClick={() => { setNuevaCategoria(''); setShowNuevaCategoria(false); }} className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 cursor-pointer shrink-0">X</button>
                     </div>
                   ) : (
                     <div className="flex gap-2 min-w-0">
-                      <CustomSelect value={form.categoria} onChange={v => handleFieldChange('categoria', v)} className="w-64 shrink-0" error={errores.categoria} options={[
+                      <CustomSelect value={form.categoria} onChange={v => handleFieldChange('categoria', v)} className="flex-1 min-w-0" error={errores.categoria} options={[
                         { value: '', label: 'Seleccionar categoría' },
                         ...[...categorias].sort((a, b) => a.localeCompare(b, 'es')).map(c => ({ value: c, label: c })),
                       ]} />
@@ -560,20 +570,24 @@ export default function ProductosVendedorPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo envase</label>
-                    <input type="text" value={form.tipo_envase} onChange={e => handleFieldChange('tipo_envase', e.target.value)} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.tipo_envase ? 'border-red-400' : 'border-gray-300'}`} />
+                    <div className="flex gap-2">
+                      {['Botella', 'Lata'].map(op => (
+                        <button key={op} type="button" onClick={() => handleFieldChange('tipo_envase', form.tipo_envase === op ? '' : op)} className={`flex-1 py-3 rounded-xl text-sm font-semibold border cursor-pointer transition-all duration-550 ease-out ${form.tipo_envase === op ? 'bg-gray-800 text-white border-gray-800 scale-105 shadow-lg shadow-gray-800/20' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100 scale-100'}`}>{op}</button>
+                      ))}
+                    </div>
                     <InputError campo="tipo_envase" />
                   </div>
                 </div>
-              ) : (
+              ) : form.tipo_producto === 'snack' ? (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Presentación (kg)</label>
                   <input type="text" value={form.presentacion_ml} onChange={e => handleFieldChange('presentacion_ml', e.target.value)} className={`w-full border rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.presentacion_ml ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="presentacion_ml" />
                 </div>
-              )}
+              ) : null}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 <div>
-                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Costo de compra (Bs)</label>
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Costo de compra caja (Bs)</label>
                   <input type="text" inputMode="numeric" value={form.costo_unitario ? Number(form.costo_unitario).toLocaleString('es') : ''} onChange={e => { const rawVal = e.target.value; if (/\s/.test(rawVal)) { setErrores((prev: any) => ({ ...prev, costo_unitario: 'El costo debe ser un número entero' })); return; } const raw = rawVal.replace(/[^0-9]/g, ''); handleFieldChange('costo_unitario', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.costo_unitario ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="costo_unitario" />
                 </div>
@@ -583,7 +597,7 @@ export default function ProductosVendedorPage() {
                   <InputError campo="precio_venta" />
                 </div>
                 <div>
-                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Precio botella (Bs)</label>
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">Precio Unidad (Bs)</label>
                   <input type="text" inputMode="numeric" value={form.precio_botella ? Number(form.precio_botella).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); handleFieldChange('precio_botella', raw === '' ? '' : parseInt(raw, 10)); }} className={`w-full border rounded-xl px-3 py-2.5 md:px-4 md:py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 ${errores.precio_botella ? 'border-red-400' : 'border-gray-300'}`} />
                   <InputError campo="precio_botella" />
                 </div>
@@ -600,6 +614,11 @@ export default function ProductosVendedorPage() {
                 <input type="checkbox" checked={form.activo} onChange={e => setForm({...form, activo: e.target.checked})} className="w-5 h-5 text-gray-800 rounded" />
                 <span className="font-semibold">Producto activo</span>
               </label>
+              {errorGeneral && (
+                <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-xl text-sm">
+                  {errorGeneral}
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-colors font-semibold flex items-center justify-center gap-2 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -636,7 +655,7 @@ export default function ProductosVendedorPage() {
                 <input type="number" value={quickForm.stock_actual} onChange={e => setQuickForm({...quickForm, stock_actual: e.target.value === '' ? '' : parseInt(e.target.value)})} onFocus={e => e.target.select()} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" min="1" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Costo de compra (Bs)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Costo de compra caja (Bs)</label>
                 <input type="text" inputMode="numeric" value={quickForm.costo_unitario ? Number(quickForm.costo_unitario).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, costo_unitario: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
               </div>
               <div>
@@ -644,7 +663,7 @@ export default function ProductosVendedorPage() {
                 <input type="text" inputMode="numeric" value={quickForm.precio_venta ? Number(quickForm.precio_venta).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, precio_venta: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Precio botella (Bs)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Precio Unidad (Bs)</label>
                 <input type="text" inputMode="numeric" value={quickForm.precio_botella ? Number(quickForm.precio_botella).toLocaleString('es') : ''} onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); setQuickForm({...quickForm, precio_botella: raw === '' ? 0 : parseInt(raw, 10)}); }} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800" />
               </div>
               <div>
